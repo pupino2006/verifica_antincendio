@@ -37,12 +37,12 @@
 
         /* Contenitore Firma */
         .signature-container { border: 2px dashed #ccc; background: #fff; margin-top: 10px; border-radius: 8px; overflow: hidden; }
-        #signature-pad { width: 100%; height: 200px; display: block; cursor: crosshair; }
+        .signature-pad-canvas { width: 100%; height: 150px; display: block; cursor: crosshair; }
 
         .btn-main { width: 100%; padding: 20px; background: var(--primary); color: white; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-clear { margin-top:5px; background:none; border:1px solid red; color:red; padding:8px 15px; border-radius:4px; cursor: pointer; font-weight: bold; width: 100%; }
         
-        .btn-foto { background: #e9ecef; border: 1px solid #ced4da; border-radius: 8px; padding: 10px 15px; font-size: 1.2rem; cursor: pointer; }
+        .btn-foto { background: #e9ecef; border: 1px solid #ced4da; border-radius: 8px; padding: 10px 15px; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .area-note { width: 100%; height: 60px; margin-top: 10px; border-radius: 8px; border: 1px solid #ddd; padding: 8px; box-sizing: border-box; }
     </style>
 </head>
@@ -83,6 +83,16 @@
                 </select>
             </div>
             <div class="input-group">
+                <label>OPERATORE 2 (Ospite/Collaboratore)</label>
+                <select id="operatore_2">
+                    <option value="">Nessuno</option>
+                    <option value="Francesco Marcone">Francesco Marcone</option>
+                    <option value="Giuliano Di Carlo">Giuliano Di Carlo</option>
+                    <option value="Sabatino Lalli">Sabatino Lalli</option>
+                    <option value="Giuseppe Marcone">Giuseppe Marcone</option>
+                </select>
+            </div>
+            <div class="input-group">
                 <label>DATA INTERVENTO</label>
                 <input type="date" id="dataVerifica">
             </div>
@@ -93,11 +103,17 @@
         </div>
 
         <div id="tab-invio" class="tab-content container" style="display:none;">
-            <h3 style="color: var(--primary);">Firma Operatore</h3>
+            <h3 style="color: var(--primary);">Firma Operatore 1</h3>
             <div class="signature-container">
-                <canvas id="signature-pad"></canvas>
+                <canvas id="signature-pad-1" class="signature-pad-canvas"></canvas>
             </div>
-            <button class="btn-clear" onclick="window.cancellaFirma()">CANCELLA FIRMA</button>
+            <button class="btn-clear" onclick="window.cancellaFirma(1)">CANCELLA FIRMA 1</button>
+
+            <h3 style="color: var(--primary); margin-top: 20px;">Firma Operatore 2</h3>
+            <div class="signature-container">
+                <canvas id="signature-pad-2" class="signature-pad-canvas"></canvas>
+            </div>
+            <button class="btn-clear" onclick="window.cancellaFirma(2)">CANCELLA FIRMA 2</button>
             
             <button id="btnInvia" class="btn-main" style="background: #28a745; margin-top: 40px;" onclick="window.inviaVerifica()">🚀 INVIA E SALVA PDF</button>
         </div>
@@ -117,7 +133,8 @@
         const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
         // Variabili globali
-        let signaturePad = null;
+        let sigPad1 = null;
+        let sigPad2 = null;
         let fotoChecklist = {};
 
         const sezioni = {
@@ -139,8 +156,6 @@
                 "Assenza di anomalie (maniglioni rotti, porte chiuse a chiave)?"
             ]
         };
-
-        // --- FUNZIONI DI NAVIGAZIONE (Garantite Globali) ---
 
         window.mostraApp = function() {
             document.getElementById('home-screen').style.display = 'none';
@@ -178,7 +193,7 @@
             }
 
             if (tabName === 'tab-invio') {
-                setTimeout(window.initSignature, 200);
+                setTimeout(window.initSignatures, 200);
             }
         };
 
@@ -197,11 +212,11 @@
                                 <label><input type="radio" name="${id}" value="SI"> SI</label>
                                 <label><input type="radio" name="${id}" value="NO"> NO</label>
                             </div>
-                            <button class="btn-foto" onclick="window.scattaFoto('${id}')">📷 Foto</button>
-                            <div id="preview_${id}" style="display:none; margin-top:10px;">
-                                <img id="img_${id}" src="" style="width:100px; border-radius:5px; border:1px solid #ddd;">
+                            <button class="btn-foto" onclick="window.scattaFoto('${id}')">📷 Scatta Foto</button>
+                            <div id="preview_${id}" style="display:none; margin-top:10px; text-align:center;">
+                                <img id="img_${id}" src="" style="width:100%; max-width:200px; border-radius:8px; border:1px solid #ddd;">
                             </div>
-                            <textarea id="note_${id}" class="area-note" placeholder="Note..."></textarea>
+                            <textarea id="note_${id}" class="area-note" placeholder="Inserisci una nota per questa foto/domanda..."></textarea>
                             <input type="file" id="input_${id}" style="display:none" accept="image/*" capture="environment" onchange="window.caricaFoto(event, '${id}')">
                         </div>`;
                 });
@@ -227,36 +242,39 @@
             }
         };
 
-        window.initSignature = function() {
-            const canvas = document.getElementById('signature-pad');
-            if (canvas) {
-                if (signaturePad) signaturePad.off();
-                signaturePad = new SignaturePad(canvas, {
-                    backgroundColor: 'rgba(255, 255, 255, 0)',
-                    penColor: 'rgb(0, 0, 0)'
-                });
-                window.resizeCanvas();
+        window.initSignatures = function() {
+            const canvas1 = document.getElementById('signature-pad-1');
+            const canvas2 = document.getElementById('signature-pad-2');
+            
+            if (canvas1) {
+                if (sigPad1) sigPad1.off();
+                sigPad1 = new SignaturePad(canvas1, { backgroundColor: 'rgba(255, 255, 255, 0)', penColor: 'black' });
+                window.resizeCanvas(canvas1, sigPad1);
+            }
+            if (canvas2) {
+                if (sigPad2) sigPad2.off();
+                sigPad2 = new SignaturePad(canvas2, { backgroundColor: 'rgba(255, 255, 255, 0)', penColor: 'black' });
+                window.resizeCanvas(canvas2, sigPad2);
             }
         };
 
-        window.resizeCanvas = function() {
-            const canvas = document.getElementById('signature-pad');
-            if (canvas && signaturePad) {
-                const ratio = Math.max(window.devicePixelRatio || 1, 1);
-                canvas.width = canvas.offsetWidth * ratio;
-                canvas.height = canvas.offsetHeight * ratio;
-                canvas.getContext("2d").scale(ratio, ratio);
-                signaturePad.clear();
-            }
+        window.resizeCanvas = function(canvas, pad) {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext("2d").scale(ratio, ratio);
+            pad.clear();
         };
 
-        window.cancellaFirma = function() {
-            if (signaturePad) signaturePad.clear();
+        window.cancellaFirma = function(n) {
+            if (n === 1 && sigPad1) sigPad1.clear();
+            if (n === 2 && sigPad2) sigPad2.clear();
         };
 
         window.inviaVerifica = async function() {
             const op1 = document.getElementById('operatore_1').value;
-            if (!op1) return alert("Seleziona l'operatore!");
+            const op2 = document.getElementById('operatore_2').value;
+            if (!op1) return alert("Seleziona l'Operatore 1!");
 
             const btn = document.getElementById('btnInvia');
             btn.disabled = true;
@@ -266,6 +284,7 @@
                 const dataV = document.getElementById('dataVerifica').value;
                 const payload = {
                     operatore_1: op1,
+                    operatore_2: op2 || null,
                     data_verifica: dataV,
                     created_at: new Date().toISOString()
                 };
@@ -280,7 +299,7 @@
                 a.download = `Verifica_${op1.replace(/\s+/g, '_')}_${dataV}.pdf`;
                 a.click();
 
-                alert("✅ Verifica inviata con successo!");
+                alert("✅ Verifica salvata e PDF generato con successo!");
                 window.tornaAllaHome();
             } catch (e) {
                 alert("Errore: " + e.message);
@@ -293,14 +312,74 @@
         window.generaPDF = async function() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            doc.text("REPORT VERIFICA ANTINCENDIO", 10, 10);
-            doc.text(`Operatore: ${document.getElementById('operatore_1').value}`, 10, 20);
-            
-            if (signaturePad && !signaturePad.isEmpty()) {
-                doc.text("Firma:", 10, 150);
-                doc.addImage(signaturePad.toDataURL(), 'PNG', 10, 160, 50, 25);
+            let y = 20;
+
+            doc.setFontSize(18);
+            doc.text("REPORT VERIFICA ANTINCENDIO", 10, y);
+            y += 15;
+
+            doc.setFontSize(12);
+            doc.text(`Operatore 1: ${document.getElementById('operatore_1').value}`, 10, y);
+            y += 7;
+            const op2Value = document.getElementById('operatore_2').value;
+            doc.text(`Operatore 2: ${op2Value || 'N/A'}`, 10, y);
+            y += 7;
+            doc.text(`Data: ${document.getElementById('dataVerifica').value}`, 10, y);
+            y += 15;
+
+            // Checklist e Foto
+            for (const [key, domande] of Object.entries(sezioni)) {
+                if (y > 270) { doc.addPage(); y = 20; }
+                doc.setFont(undefined, 'bold');
+                doc.text(key.toUpperCase().replace('_', ' '), 10, y);
+                y += 10;
+                doc.setFont(undefined, 'normal');
+
+                domande.forEach((domanda, index) => {
+                    const id = `${key}_q${index}`;
+                    const risposta = document.querySelector(`input[name="${id}"]:checked`)?.value || "N.D.";
+                    const nota = document.getElementById(`note_${id}`).value;
+
+                    if (y > 270) { doc.addPage(); y = 20; }
+                    
+                    const splitDomanda = doc.splitTextToSize(`${domanda}: ${risposta}`, 180);
+                    doc.text(splitDomanda, 10, y);
+                    y += (splitDomanda.length * 7);
+
+                    if (nota) {
+                        doc.setFontSize(10);
+                        doc.setTextColor(100);
+                        doc.text(`Nota: ${nota}`, 15, y);
+                        y += 7;
+                        doc.setFontSize(12);
+                        doc.setTextColor(0);
+                    }
+
+                    if (fotoChecklist[id]) {
+                        if (y > 200) { doc.addPage(); y = 20; }
+                        doc.addImage(fotoChecklist[id], 'JPEG', 15, y, 40, 30);
+                        y += 35;
+                    }
+                });
+                y += 5;
             }
-            
+
+            // Firme
+            if (y > 240) { doc.addPage(); y = 20; }
+            doc.setFont(undefined, 'bold');
+            doc.text("Firme Operatori", 10, y);
+            y += 10;
+
+            if (sigPad1 && !sigPad1.isEmpty()) {
+                doc.text("Firma Operatore 1:", 10, y);
+                doc.addImage(sigPad1.toDataURL(), 'PNG', 10, y + 2, 50, 20);
+            }
+
+            if (sigPad2 && !sigPad2.isEmpty()) {
+                doc.text("Firma Operatore 2:", 110, y);
+                doc.addImage(sigPad2.toDataURL(), 'PNG', 110, y + 2, 50, 20);
+            }
+
             return doc.output('blob');
         };
 
@@ -315,7 +394,7 @@
             try {
                 const { data, error } = await supabaseClient.from('verifiche_antincendio').select('*').order('created_at', {ascending: false});
                 if (error) throw error;
-                container.innerHTML = data.map(v => `<div class='card-verifica'>${new Date(v.created_at).toLocaleDateString()} - ${v.operatore_1}</div>`).join('');
+                container.innerHTML = data.map(v => `<div class='card-verifica'>${new Date(v.created_at).toLocaleDateString()} - ${v.operatore_1} ${v.operatore_2 ? '& ' + v.operatore_2 : ''}</div>`).join('');
             } catch(e) { container.innerHTML = "Errore caricamento: " + e.message; }
         };
 
