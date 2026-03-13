@@ -3,8 +3,9 @@ const SB_URL = "https://vnzrewcbnoqbqvzckome.supabase.co";
 const SB_KEY = "sb_publishable_Sq9txbu-PmKdbxETSx2cjw_WqWEFBPO"; 
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
+// Variabili globali
 let signaturePad;
-let fotoChecklist = {}; // Memorizza le immagini base64: { "sezione_q0": "data:image..." }
+let fotoChecklist = {};
 
 const sezioni = {
     estintori: [
@@ -37,57 +38,70 @@ const sezioni = {
     ]
 };
 
-window.onload = () => {
-    const canvas = document.getElementById('signature-pad');
-    signaturePad = new SignaturePad(canvas);
+// --- ESPOSIZIONE GLOBALE DELLE FUNZIONI (RISOLVE TYPEERROR) ---
 
-    function resizeCanvas() {
-        const ratio = Math.max(window.devicePixelRatio || 1, 1);
-        canvas.width = canvas.offsetWidth * ratio;
-        canvas.height = canvas.offsetHeight * ratio;
-        canvas.getContext("2d").scale(ratio, ratio);
-        signaturePad.clear();
-    }
-    window.addEventListener("resize", resizeCanvas);
-    resizeCanvas();
-
-    renderChecklist();
-};
-
-function mostraApp() {
+window.mostraApp = function() {
     document.getElementById('home-screen').style.display = 'none';
     document.getElementById('app-interface').style.display = 'block';
     document.getElementById('tab-storico').style.display = 'none';
     document.getElementById('btnHomeFisso').style.display = 'block';
-    openTab(null, 'tab-info');
-}
+    
+    // Reset dello stato foto e checklist
+    fotoChecklist = {};
+    window.renderChecklist();
 
-function tornaAllaHome() {
-    location.reload();
-}
+    // Inizializza la firma con un piccolo ritardo per permettere al DOM di renderizzare il canvas
+    setTimeout(() => {
+        window.initSignature();
+    }, 200);
 
-function openTab(evt, tabName) {
+    window.openTab(null, 'tab-info');
+};
+
+window.tornaAllaHome = function() {
+    document.getElementById('home-screen').style.display = 'block';
+    document.getElementById('app-interface').style.display = 'none';
+    document.getElementById('tab-storico').style.display = 'none';
+    document.getElementById('btnHomeFisso').style.display = 'none';
+};
+
+window.openTab = function(evt, tabName) {
     const contents = document.getElementsByClassName("tab-content");
-    for (let i = 0; i < contents.length; i++) contents[i].style.display = "none";
+    for (let i = 0; i < contents.length; i++) {
+        contents[i].style.display = "none";
+    }
 
     const btns = document.getElementsByClassName("tab-btn");
-    for (let i = 0; i < btns.length; i++) btns[i].classList.remove("active");
+    for (let i = 0; i < btns.length; i++) {
+        btns[i].classList.remove("active");
+    }
 
-    document.getElementById(tabName).style.display = "block";
-    if (evt) {
+    const targetTab = document.getElementById(tabName);
+    if (targetTab) targetTab.style.display = "block";
+
+    // Se entriamo nel tab invio, ricalcoliamo il canvas per la firma
+    if (tabName === 'tab-invio') {
+        setTimeout(() => {
+            window.resizeCanvas();
+        }, 100);
+    }
+
+    if (evt && evt.currentTarget) {
         evt.currentTarget.classList.add("active");
     } else {
-        const btn = document.querySelector(`.tab-btn[onclick*="${tabName}"]`);
-        if(btn) btn.classList.add("active");
+        // Fallback per attivazione manuale del primo tab
+        const firstBtn = document.querySelector(`.tab-btn[onclick*="${tabName}"]`);
+        if (firstBtn) firstBtn.classList.add("active");
     }
-}
+};
 
-function renderChecklist() {
+window.renderChecklist = function() {
     const container = document.getElementById('checklist-container');
-    let html = '';
+    if (!container) return;
     
+    let html = '';
     for (const [key, domande] of Object.entries(sezioni)) {
-        html += `<div class="sezione-titolo">${key.replace('_', ' ')}</div>`;
+        html += `<div class="sezione-titolo">${key.toUpperCase().replace('_', ' ')}</div>`;
         domande.forEach((domanda, index) => {
             const id = `${key}_q${index}`;
             html += `
@@ -99,62 +113,84 @@ function renderChecklist() {
                     </div>
                     <div style="display: flex; gap: 10px; align-items: center;">
                         <textarea class="area-note" id="note_${id}" placeholder="Note eventuali..."></textarea>
-                        <button type="button" class="btn-foto" onclick="scattaFoto('${id}')">📷</button>
+                        <button type="button" class="btn-foto" onclick="window.scattaFoto('${id}')">📷</button>
                     </div>
                     <div id="preview_${id}" style="margin-top:10px; display:none;">
                         <img id="img_${id}" src="" style="width:100px; border-radius:8px; border:1px solid #ddd;">
-                        <button type="button" onclick="rimuoviFoto('${id}')" style="background:red; color:white; border:none; border-radius:50%; width:20px; height:20px; font-size:10px; cursor:pointer;">X</button>
+                        <button type="button" onclick="window.rimuoviFoto('${id}')" style="background:red; color:white; border:none; border-radius:50%; width:20px; height:20px; font-size:10px; cursor:pointer; vertical-align: top;">X</button>
                     </div>
-                    <!-- Input nascosto per fotocamera -->
-                    <input type="file" id="input_file_${id}" accept="image/*" capture="environment" style="display:none;" onchange="gestisciFoto(event, '${id}')">
+                    <input type="file" id="input_file_${id}" accept="image/*" capture="environment" style="display:none;" onchange="window.gestisciFoto(event, '${id}')">
                 </div>
             `;
         });
     }
     container.innerHTML = html;
-}
+};
 
-function scattaFoto(id) {
-    document.getElementById(`input_file_${id}`).click();
-}
+window.scattaFoto = function(id) {
+    const input = document.getElementById(`input_file_${id}`);
+    if (input) input.click();
+};
 
-function gestisciFoto(event, id) {
+window.gestisciFoto = function(event, id) {
     const file = event.target.files[0];
     if (file) {
         const reader = new FileReader();
         reader.onload = function(e) {
             const base64 = e.target.result;
             fotoChecklist[id] = base64;
-            document.getElementById(`img_${id}`).src = base64;
-            document.getElementById(`preview_${id}`).style.display = "block";
+            const img = document.getElementById(`img_${id}`);
+            const preview = document.getElementById(`preview_${id}`);
+            if (img) img.src = base64;
+            if (preview) preview.style.display = "block";
         };
         reader.readAsDataURL(file);
     }
-}
+};
 
-function rimuoviFoto(id) {
+window.rimuoviFoto = function(id) {
     delete fotoChecklist[id];
-    document.getElementById(`preview_${id}`).style.display = "none";
-    document.getElementById(`input_file_${id}`).value = "";
-}
+    const preview = document.getElementById(`preview_${id}`);
+    const input = document.getElementById(`input_file_${id}`);
+    if (preview) preview.style.display = "none";
+    if (input) input.value = "";
+};
 
-function raccogliRisposte(sezione) {
-    let testoRisposte = "";
-    sezioni[sezione].forEach((d, i) => {
-        const val = document.querySelector(`input[name="${sezione}_q${i}"]:checked`)?.value || "N.D.";
-        const nota = document.getElementById(`note_${sezione}_q${i}`).value;
-        testoRisposte += `D: ${d}\nR: ${val}${nota ? ' - Note: ' + nota : ''}\n\n`;
-    });
-    return testoRisposte;
-}
+window.cancellaFirma = function() {
+    if (signaturePad) signaturePad.clear();
+};
 
-async function inviaVerifica() {
+// --- LOGICA FIRMA (FIX TOUCH) ---
+window.initSignature = function() {
+    const canvas = document.getElementById('signature-pad');
+    if (canvas) {
+        signaturePad = new SignaturePad(canvas, {
+            backgroundColor: 'rgba(255, 255, 255, 0)',
+            penColor: 'rgb(0, 0, 0)'
+        });
+        window.resizeCanvas();
+    }
+};
+
+window.resizeCanvas = function() {
+    const canvas = document.getElementById('signature-pad');
+    if (!canvas) return;
+    // Calcola il rapporto pixel per evitare sfocature su mobile
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    canvas.width = canvas.offsetWidth * ratio;
+    canvas.height = canvas.offsetHeight * ratio;
+    canvas.getContext("2d").scale(ratio, ratio);
+    if (signaturePad) signaturePad.clear();
+};
+
+// --- INVIO E PDF ---
+window.inviaVerifica = async function() {
     const btn = document.getElementById('btnInvia');
     const op1 = document.getElementById('operatore_1').value;
     
     if (!op1) {
-        alert("Per favore, seleziona l'Operatore 1!");
-        openTab(null, 'tab-info');
+        alert("Seleziona l'Operatore 1 prima di inviare!");
+        window.openTab(null, 'tab-info');
         return;
     }
 
@@ -182,22 +218,32 @@ async function inviaVerifica() {
         const pdfBlob = await generaPDF();
         const fileURL = URL.createObjectURL(pdfBlob);
         
-        alert("✅ Verifica salvata e inviata!");
+        alert("✅ Verifica salvata con successo!");
         
         const link = document.createElement('a');
         link.href = fileURL;
-        link.download = `Verifica_${op1}_${new Date().getTime()}.pdf`;
+        link.download = `Verifica_${op1.replace(/ /g, '_')}_${new Date().getTime()}.pdf`;
         link.click();
 
-        tornaAllaHome();
+        window.tornaAllaHome();
 
     } catch (err) {
         console.error(err);
-        alert("Errore: " + err.message);
+        alert("Errore durante l'invio: " + err.message);
     } finally {
         btn.disabled = false;
         btn.innerText = "🚀 SALVA E GENERA PDF";
     }
+};
+
+function raccogliRisposte(sezione) {
+    let testo = "";
+    sezioni[sezione].forEach((d, i) => {
+        const val = document.querySelector(`input[name="${sezione}_q${i}"]:checked`)?.value || "N.D.";
+        const nota = document.getElementById(`note_${sezione}_q${i}`).value;
+        testo += `D: ${d}\nR: ${val}${nota ? ' - Note: ' + nota : ''}\n\n`;
+    });
+    return testo;
 }
 
 async function generaPDF() {
@@ -205,8 +251,9 @@ async function generaPDF() {
     const doc = new jsPDF();
     const dataOggi = document.getElementById('dataVerifica').value;
 
+    // Gestione Logo (Tenta di caricarlo, se fallisce prosegue)
     const imgLogo = document.querySelector('.header-logo img');
-    if (imgLogo) {
+    if (imgLogo && imgLogo.complete) {
         try { doc.addImage(imgLogo, 'PNG', 10, 5, 40, 15); } catch(e) {}
     }
 
@@ -218,76 +265,43 @@ async function generaPDF() {
     doc.setTextColor(0, 0, 0);
     doc.text(`Data: ${dataOggi}`, 10, 30);
     doc.text(`Operatore 1: ${document.getElementById('operatore_1').value}`, 10, 37);
-    doc.text(`Operatore 2: ${document.getElementById('operatore_2').value || 'Nessuno'}`, 10, 44);
 
-    let y = 55;
+    let y = 50;
 
     for (const [key, domande] of Object.entries(sezioni)) {
-        if (y > 250) { doc.addPage(); y = 20; }
-
+        if (y > 260) { doc.addPage(); y = 20; }
         doc.setFont("helvetica", "bold");
-        doc.setFillColor(235, 243, 250);
-        doc.rect(10, y, 190, 8, 'F');
-        doc.text(key.toUpperCase().replace('_', ' '), 12, y + 6);
-        y += 15;
+        doc.text(key.toUpperCase().replace('_', ' '), 10, y);
+        y += 10;
+        doc.setFont("helvetica", "normal");
 
         for (let i = 0; i < domande.length; i++) {
-            const domanda = domande[i];
             const id = `${key}_q${i}`;
             const risp = document.querySelector(`input[name="${id}"]:checked`)?.value || "N.D.";
-            const nota = document.getElementById(`note_${id}`).value;
-            const foto = fotoChecklist[id];
-
-            if (y > 240) { doc.addPage(); y = 20; }
-
-            doc.setFont("helvetica", "normal");
-            const splitDomanda = doc.splitTextToSize(`${i+1}. ${domanda}`, 160);
-            doc.text(splitDomanda, 10, y);
-            
-            if(risp === "NO") doc.setTextColor(220, 0, 0);
-            else doc.setTextColor(0, 100, 0);
-            doc.text(risp, 180, y);
-            doc.setTextColor(0, 0, 0);
-
-            y += (splitDomanda.length * 7);
-
-            if (nota) {
-                doc.setFontSize(9);
-                doc.setFont("helvetica", "italic");
-                doc.text(`Note: ${nota}`, 15, y);
-                y += 6;
-                doc.setFontSize(10);
-            }
-
-            if (foto) {
-                try {
-                    doc.addImage(foto, 'JPEG', 15, y, 30, 30);
-                    y += 35;
-                } catch(e) { console.error("Errore aggiunta foto PDF", e); }
-            }
-            
-            y += 3;
+            doc.text(`${i+1}. ${domande[i].substring(0, 70)}... : ${risp}`, 15, y);
+            y += 7;
+            if (y > 270) { doc.addPage(); y = 20; }
         }
         y += 5;
     }
 
-    if (!signaturePad.isEmpty()) {
-        if (y > 230) { doc.addPage(); y = 20; }
-        const sigData = signaturePad.toDataURL();
-        doc.setFont("helvetica", "bold");
-        doc.text("Firma dell'operatore:", 10, y + 5);
-        doc.addImage(sigData, 'PNG', 10, y + 8, 50, 20);
+    if (signaturePad && !signaturePad.isEmpty()) {
+        const sigData = signaturePad.toDataURL("image/png");
+        doc.text("Firma:", 10, y + 5);
+        doc.addImage(sigData, 'PNG', 10, y + 10, 50, 20);
     }
 
     return doc.output('blob');
 }
 
-async function caricaStorico() {
+window.caricaStorico = async function() {
     document.getElementById('home-screen').style.display = 'none';
+    document.getElementById('app-interface').style.display = 'none';
     document.getElementById('tab-storico').style.display = 'block';
     document.getElementById('btnHomeFisso').style.display = 'block';
+
     const container = document.getElementById('lista-verifiche');
-    container.innerHTML = "<p style='text-align:center;'>Caricamento archivio...</p>";
+    container.innerHTML = "<p style='text-align:center;'>Caricamento...</p>";
     
     try {
         const { data, error } = await supabaseClient
@@ -296,22 +310,19 @@ async function caricaStorico() {
             .order('created_at', { ascending: false });
 
         if (error) throw error;
-
-        if (data.length === 0) {
-            container.innerHTML = "<p style='text-align:center;'>Nessuna verifica trovata.</p>";
-            return;
-        }
-
         container.innerHTML = data.map(v => `
             <div class="card-verifica" style="border-left-color: #8b98a7;">
-                <div style="display:flex; justify-content:space-between;">
-                    <strong>${new Date(v.created_at).toLocaleDateString('it-IT')}</strong>
-                    <span style="color:#004a99; font-weight:bold;">ID: ${v.id}</span>
-                </div>
-                <div style="margin-top:5px;">Operatore: ${v.operatore_1}</div>
+                <strong>${new Date(v.created_at).toLocaleDateString()}</strong> - ${v.operatore_1}
             </div>
         `).join('');
     } catch(e) {
         container.innerHTML = "Errore: " + e.message;
     }
-}
+};
+
+// --- INIT ---
+window.addEventListener('load', () => {
+    window.renderChecklist();
+    const di = document.getElementById('dataVerifica');
+    if (di) di.valueAsDate = new Date();
+});
