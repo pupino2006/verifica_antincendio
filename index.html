@@ -35,7 +35,7 @@
         .opzioni { display: flex; gap: 20px; margin-bottom: 10px; }
         .sezione-titolo { background: var(--primary); color: white; padding: 10px; border-radius: 8px; margin: 25px 0 15px; text-align: center; font-weight: bold; }
 
-        /* Contenitore Firma (Stile del tuo esempio) */
+        /* Contenitore Firma */
         .signature-container { border: 2px dashed #ccc; background: #fff; margin-top: 10px; border-radius: 8px; overflow: hidden; }
         #signature-pad { width: 100%; height: 200px; display: block; cursor: crosshair; }
 
@@ -110,6 +110,219 @@
         <button onclick="window.tornaAllaHome()" class="btn-clear" style="border-color: #ccc; color: #666; margin-top: 20px;">CHIUDI ARCHIVIO</button>
     </div>
 
-    <script src="script.js"></script>
+    <script>
+        // --- CONFIGURAZIONE SUPABASE ---
+        const SB_URL = "https://vnzrewcbnoqbqvzckome.supabase.co";
+        const SB_KEY = "sb_publishable_Sq9txbu-PmKdbxETSx2cjw_WqWEFBPO"; 
+        const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+
+        // Variabili globali
+        let signaturePad = null;
+        let fotoChecklist = {};
+
+        const sezioni = {
+            estintori: [
+                "Gli estintori sono segnalati da apposita cartellonistica?",
+                "Gli estintori sono prontamente individuabili e facilmente accessibili?",
+                "Assenza di anomalie e/o fattori di pericolo sugli estintori?",
+                "Ultimo controllo effettuato non oltre sei mesi fa?"
+            ],
+            idranti: [
+                "Gli idranti sono segnalati da apposita cartellonistica?",
+                "Gli idranti sono prontamente individuabili e facilmente accessibili?",
+                "Assenza di anomalie e/o fattori di pericolo sugli idranti?",
+                "Ultimo controllo effettuato non oltre sei mesi fa?"
+            ],
+            porte_tagliafuoco: [
+                "Le porte tagliafuoco sono segnalate e prive di ostacoli?",
+                "Le prove di apertura/chiusura hanno confermato il corretto funzionamento?",
+                "Assenza di anomalie (maniglioni rotti, porte chiuse a chiave)?"
+            ]
+        };
+
+        // --- FUNZIONI DI NAVIGAZIONE (Garantite Globali) ---
+
+        window.mostraApp = function() {
+            document.getElementById('home-screen').style.display = 'none';
+            document.getElementById('app-interface').style.display = 'block';
+            document.getElementById('tab-storico').style.display = 'none';
+            document.getElementById('btnHomeFisso').style.display = 'block';
+            
+            fotoChecklist = {};
+            window.renderChecklist();
+            window.openTab(null, 'tab-info');
+        };
+
+        window.tornaAllaHome = function() {
+            document.getElementById('home-screen').style.display = 'block';
+            document.getElementById('app-interface').style.display = 'none';
+            document.getElementById('tab-storico').style.display = 'none';
+            document.getElementById('btnHomeFisso').style.display = 'none';
+        };
+
+        window.openTab = function(evt, tabName) {
+            const contents = document.getElementsByClassName("tab-content");
+            for (let i = 0; i < contents.length; i++) contents[i].style.display = "none";
+
+            const btns = document.getElementsByClassName("tab-btn");
+            for (let i = 0; i < btns.length; i++) btns[i].classList.remove("active");
+
+            const target = document.getElementById(tabName);
+            if (target) target.style.display = "block";
+
+            if (evt) {
+                evt.currentTarget.classList.add("active");
+            } else {
+                const btn = document.getElementById('btn-' + tabName);
+                if (btn) btn.classList.add("active");
+            }
+
+            if (tabName === 'tab-invio') {
+                setTimeout(window.initSignature, 200);
+            }
+        };
+
+        window.renderChecklist = function() {
+            const container = document.getElementById('checklist-container');
+            if (!container) return;
+            let html = '';
+            for (const [key, domande] of Object.entries(sezioni)) {
+                html += `<div class="sezione-titolo">${key.toUpperCase().replace('_', ' ')}</div>`;
+                domande.forEach((domanda, index) => {
+                    const id = `${key}_q${index}`;
+                    html += `
+                        <div class="card-verifica">
+                            <span class="domanda-testo">${domanda}</span>
+                            <div class="opzioni">
+                                <label><input type="radio" name="${id}" value="SI"> SI</label>
+                                <label><input type="radio" name="${id}" value="NO"> NO</label>
+                            </div>
+                            <button class="btn-foto" onclick="window.scattaFoto('${id}')">📷 Foto</button>
+                            <div id="preview_${id}" style="display:none; margin-top:10px;">
+                                <img id="img_${id}" src="" style="width:100px; border-radius:5px; border:1px solid #ddd;">
+                            </div>
+                            <textarea id="note_${id}" class="area-note" placeholder="Note..."></textarea>
+                            <input type="file" id="input_${id}" style="display:none" accept="image/*" capture="environment" onchange="window.caricaFoto(event, '${id}')">
+                        </div>`;
+                });
+            }
+            container.innerHTML = html;
+        };
+
+        window.scattaFoto = function(id) { 
+            const input = document.getElementById(`input_${id}`);
+            if (input) input.click(); 
+        };
+
+        window.caricaFoto = function(event, id) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    fotoChecklist[id] = e.target.result;
+                    document.getElementById(`img_${id}`).src = e.target.result;
+                    document.getElementById(`preview_${id}`).style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        window.initSignature = function() {
+            const canvas = document.getElementById('signature-pad');
+            if (canvas) {
+                if (signaturePad) signaturePad.off();
+                signaturePad = new SignaturePad(canvas, {
+                    backgroundColor: 'rgba(255, 255, 255, 0)',
+                    penColor: 'rgb(0, 0, 0)'
+                });
+                window.resizeCanvas();
+            }
+        };
+
+        window.resizeCanvas = function() {
+            const canvas = document.getElementById('signature-pad');
+            if (canvas && signaturePad) {
+                const ratio = Math.max(window.devicePixelRatio || 1, 1);
+                canvas.width = canvas.offsetWidth * ratio;
+                canvas.height = canvas.offsetHeight * ratio;
+                canvas.getContext("2d").scale(ratio, ratio);
+                signaturePad.clear();
+            }
+        };
+
+        window.cancellaFirma = function() {
+            if (signaturePad) signaturePad.clear();
+        };
+
+        window.inviaVerifica = async function() {
+            const op1 = document.getElementById('operatore_1').value;
+            if (!op1) return alert("Seleziona l'operatore!");
+
+            const btn = document.getElementById('btnInvia');
+            btn.disabled = true;
+            btn.innerText = "Salvataggio...";
+
+            try {
+                const dataV = document.getElementById('dataVerifica').value;
+                const payload = {
+                    operatore_1: op1,
+                    data_verifica: dataV,
+                    created_at: new Date().toISOString()
+                };
+
+                const { error } = await supabaseClient.from('verifiche_antincendio').insert([payload]);
+                if (error) throw error;
+
+                const pdf = await window.generaPDF();
+                const url = URL.createObjectURL(pdf);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Verifica_${op1.replace(/\s+/g, '_')}_${dataV}.pdf`;
+                a.click();
+
+                alert("✅ Verifica inviata con successo!");
+                window.tornaAllaHome();
+            } catch (e) {
+                alert("Errore: " + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "🚀 INVIA E SALVA PDF";
+            }
+        };
+
+        window.generaPDF = async function() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.text("REPORT VERIFICA ANTINCENDIO", 10, 10);
+            doc.text(`Operatore: ${document.getElementById('operatore_1').value}`, 10, 20);
+            
+            if (signaturePad && !signaturePad.isEmpty()) {
+                doc.text("Firma:", 10, 150);
+                doc.addImage(signaturePad.toDataURL(), 'PNG', 10, 160, 50, 25);
+            }
+            
+            return doc.output('blob');
+        };
+
+        window.caricaStorico = async function() {
+            document.getElementById('home-screen').style.display = 'none';
+            document.getElementById('tab-storico').style.display = 'block';
+            document.getElementById('btnHomeFisso').style.display = 'block';
+            
+            const container = document.getElementById('lista-verifiche');
+            container.innerHTML = "Caricamento...";
+            
+            try {
+                const { data, error } = await supabaseClient.from('verifiche_antincendio').select('*').order('created_at', {ascending: false});
+                if (error) throw error;
+                container.innerHTML = data.map(v => `<div class='card-verifica'>${new Date(v.created_at).toLocaleDateString()} - ${v.operatore_1}</div>`).join('');
+            } catch(e) { container.innerHTML = "Errore caricamento: " + e.message; }
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const di = document.getElementById('dataVerifica');
+            if (di) di.valueAsDate = new Date();
+        });
+    </script>
 </body>
 </html>
