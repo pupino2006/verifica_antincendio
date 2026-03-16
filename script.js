@@ -200,7 +200,8 @@ window.inviaVerifica = async function() {
     btn.innerText = "Invio in corso...";
 
     try {
-        // Correzione: La colonna nel database si chiama 'data_verifica'
+        // Rimosso 'created_at' e 'data_ispezione'
+        // Usiamo solo 'data_verifica' come confermato essere presente nel DB
         const payload = {
             operatore_1: op1,
             operatore_2: document.getElementById('operatore_2').value,
@@ -210,7 +211,6 @@ window.inviaVerifica = async function() {
             luci_emergenza: raccogliRisposte('luci_di_emergenza'),
             porte: raccogliRisposte('porte_tagliafuoco'),
             uscite: raccogliRisposte('vie_di_esodo'),
-            created_at: new Date().toISOString(),
             processato: false
         };
 
@@ -227,14 +227,14 @@ window.inviaVerifica = async function() {
 
         const savedRecord = data[0];
 
-        // 2. Chiamata alla Edge Function (Invio Email e PDF Cloud)
+        // 2. Chiamata alla Edge Function
         fetch(EDGE_FUNCTION_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(savedRecord)
         }).catch(err => console.error("Errore background function:", err));
 
-        // 3. Generazione PDF locale per l'utente
+        // 3. Generazione PDF locale
         const pdfBlob = await generaPDF();
         const fileURL = URL.createObjectURL(pdfBlob);
         
@@ -323,12 +323,12 @@ window.caricaStorico = async function() {
         const { data, error } = await supabaseClient
             .from('verifiche_antincendio')
             .select('*')
-            .order('created_at', { ascending: false });
+            .order('data_verifica', { ascending: false }); // Ordiniamo per la colonna esistente
 
         if (error) throw error;
         container.innerHTML = data.map(v => `
             <div class="card-verifica" style="border-left-color: ${v.processato ? '#27ae60' : '#8b98a7'};">
-                <strong>${new Date(v.created_at).toLocaleDateString()}</strong> - ${v.operatore_1}
+                <strong>${v.data_verifica ? new Date(v.data_verifica).toLocaleDateString() : 'N.D.'}</strong> - ${v.operatore_1}
                 ${v.pdf_url ? `<br><small><a href="${v.pdf_url}" target="_blank">📄 Scarica Cloud PDF</a></small>` : ''}
             </div>
         `).join('');
