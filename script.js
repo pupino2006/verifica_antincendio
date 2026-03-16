@@ -3,7 +3,7 @@ const SB_URL = "https://vnzrewcbnoqbqvzckome.supabase.co";
 const SB_KEY = "sb_publishable_Sq9txbu-PmKdbxETSx2cjw_WqWEFBPO"; 
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
-// URL della tua Edge Function (Sostituisci con l'URL reale dopo il deploy)
+// URL della tua Edge Function
 const EDGE_FUNCTION_URL = "https://vnzrewcbnoqbqvzckome.supabase.co/functions/v1/generate-pdf-function";
 
 // Variabili globali
@@ -104,7 +104,7 @@ window.renderChecklist = function() {
     
     let html = '';
     for (const [key, domande] of Object.entries(sezioni)) {
-        html += `<div class="sezione-titolo">${key.toUpperCase().replace('_', ' ')}</div>`;
+        html += `<div class="sezione-titolo">${key.toUpperCase().replace(/_/g, ' ')}</div>`;
         domande.forEach((domanda, index) => {
             const id = `${key}_q${index}`;
             html += `
@@ -200,42 +200,42 @@ window.inviaVerifica = async function() {
     btn.innerText = "Invio in corso...";
 
     try {
-        // Prepariamo i dati per il database
+        // Prepariamo i dati per il database secondo lo schema SQL
         const payload = {
             operatore_1: op1,
             operatore_2: document.getElementById('operatore_2').value,
-            data_ispezione: dataOggiStr, // Utilizziamo lo stesso nome campo della function
+            data_ispezione: dataOggiStr, 
             estintori: raccogliRisposte('estintori'),
             idranti: raccogliRisposte('idranti'),
-            luci_emergenza: raccogliRisposte('luci_di_emergenza'), // Fix nome chiave
-            porte: raccogliRisposte('porte_tagliafuoco'), // Fix nome chiave
-            uscite: raccogliRisposte('vie_di_esodo'), // Fix nome chiave
-            created_at: new Date().toISOString()
+            luci_emergenza: raccogliRisposte('luci_di_emergenza'),
+            porte: raccogliRisposte('porte_tagliafuoco'),
+            uscite: raccogliRisposte('vie_di_esodo'),
+            created_at: new Date().toISOString(),
+            processato: false
         };
 
         // 1. Inserimento record nel Database
         const { data, error } = await supabaseClient
             .from('verifiche_antincendio')
             .insert([payload])
-            .select(); // IMPORTANTE: .select() restituisce l'ID appena creato
+            .select();
 
         if (error) throw error;
 
         const savedRecord = data[0];
 
-        // 2. Chiamata alla Edge Function per invio Email e salvataggio PDF finale
-        // Non attendiamo la risposta per non bloccare l'utente, gira in background
+        // 2. Chiamata alla Edge Function (Invio Email e PDF Cloud)
         fetch(EDGE_FUNCTION_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(savedRecord)
         }).catch(err => console.error("Errore background function:", err));
 
-        // 3. Generazione PDF locale (per download immediato dell'operatore)
+        // 3. Generazione PDF locale per l'utente
         const pdfBlob = await generaPDF();
         const fileURL = URL.createObjectURL(pdfBlob);
         
-        alert("✅ Verifica salvata con successo! L'email verrà inviata tra pochi istanti.");
+        alert("✅ Verifica salvata con successo!");
         
         const link = document.createElement('a');
         link.href = fileURL;
@@ -270,11 +270,6 @@ async function generaPDF() {
     const doc = new jsPDF();
     const dataOggi = document.getElementById('dataVerifica').value;
 
-    const imgLogo = document.querySelector('.header-logo img');
-    if (imgLogo && imgLogo.complete) {
-        try { doc.addImage(imgLogo, 'PNG', 10, 5, 40, 15); } catch(e) {}
-    }
-
     doc.setFontSize(16);
     doc.setTextColor(0, 74, 153);
     doc.text("VERBALE VERIFICA ANTINCENDIO", 70, 15);
@@ -289,7 +284,7 @@ async function generaPDF() {
     for (const [key, domande] of Object.entries(sezioni)) {
         if (y > 260) { doc.addPage(); y = 20; }
         doc.setFont("helvetica", "bold");
-        doc.text(key.toUpperCase().replace('_', ' '), 10, y);
+        doc.text(key.toUpperCase().replace(/_/g, ' '), 10, y);
         y += 10;
         doc.setFont("helvetica", "normal");
 
