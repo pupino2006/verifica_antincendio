@@ -8,33 +8,37 @@ let signaturePad;
 let fotoChecklist = {};
 
 const sezioni = {
-    estintori: [
+    "estintori": [
         "Gli estintori sono segnalati da apposita cartellonistica?",
         "Gli estintori sono prontamente individuabili e facilmente accessibili?",
-        "Assenza di anomalie e/o fattori di pericolo sugli estintori?",
-        "Ultimo controllo effettuato non oltre sei mesi fa?"
+        "Si è potuta riscontrare l’ASSENZA di anomalie e/o fattori di pericolo sugli estintori (es. manometro al di fuori della zona verde, ammaccature e/o crepe, spina di sicurezza mancante, ecc.)?",
+        "L’ultimo controllo sugli estintori da parte di ditta specializzata è stato effettuato non oltre sei mesi fa?"
     ],
-    idranti: [
+    "idranti": [
         "Gli idranti sono segnalati da apposita cartellonistica?",
         "Gli idranti sono prontamente individuabili e facilmente accessibili?",
-        "Assenza di anomalie e/o fattori di pericolo sugli idranti?",
-        "Ultimo controllo effettuato non oltre sei mesi fa?"
+        "Si è potuta riscontrare l’ASSENZA di anomalie e/o fattori di pericolo sugli idranti (es. mancanza di lancia erogatrice, manichetta non correttamente avvolta, cassetta ammaccata, ecc.)?",
+        "L’ultimo controllo sugli idranti da parte di ditta specializzata è stato effettuato non oltre sei mesi fa?"
     ],
-    luci_emergenza: [
-        "Le luci di emergenza sono correttamente funzionanti?",
-        "Assenza di anomalie e/o fattori di pericolo sulle luci?"
+    "luci_di_emergenza": [
+        "Le luci di emergenza sono correttamente funzionanti in caso di mancanza di alimentazione elettrica?",
+        "Si è potuta riscontrare l’ASSENZA di anomalie e/o fattori di pericolo sulle luci di emergenza (es. mancanza cartellonistica, malfunzionamento batterie, ecc.)?"
     ],
-    porte: [
-        "Le porte tagliafuoco sono segnalate e prive di ostacoli?",
-        "Le prove di apertura/chiusura hanno confermato il corretto funzionamento?",
-        "Assenza di anomalie (maniglioni rotti, porte chiuse a chiave)?",
-        "Ultimo controllo effettuato non oltre sei mesi fa?"
+    "impianto_irai": [
+        "I dispositivi di rilevazione automatica e i pulsanti manuali di allarme incendio sono prontamente individuabili e facilmente accessibili?",
+        "Si è potuta riscontrare l’ASSENZA di anomalie e/o fattori di pericolo sui dispositivi dell’IRAI (es. rilevatori non adeguatamente puliti, mancata attivazione, ecc.)?"
     ],
-    uscite: [
-        "Le vie di esodo e uscite sono segnalate correttamente?",
-        "I percorsi sono privi di ostacoli?",
+    "porte_tagliafuoco": [
+        "Le porte tagliafuoco sono correttamente segnalate da specifica cartellonistica, e priva di ostacoli alla loro apertura e/o chiusura?",
+        "Le prove di aperture e/o chiusura delle porte tagliafuoco ha confermato il loro corretto funzionamento?",
+        "Si è potuta riscontrare l’ASSENZA di anomalie e/o fattori di pericolo sulle porte tagliafuoco (es. porta chiusa a chiave, maniglione rotto, ecc.)?",
+        "L’ultimo controllo sulle porte tagliafuoco da parte di ditta specializzata è stato effettuato non oltre sei mesi fa?"
+    ],
+    "vie_di_esodo": [
+        "Le vie di esodo e le uscite di sicurezza sono segnalate mediante apposita cartellonistica?",
+        "I percorsi di esodo sono privi di materiale che potrebbe fungere da ostacolo all’esodo stesso?",
         "Le vie di esodo sono adeguatamente illuminate?",
-        "Assenza di anomalie (combustibili sui percorsi, porte bloccate)?"
+        "Si è potuta riscontrare l’ASSENZA di anomalie e/o fattori di pericolo sulle vie di esodo e le uscite di sicurezza (es. presenza di combustibili e/o infiammabili, porte non apribili, ecc.)?"
     ]
 };
 
