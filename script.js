@@ -59,10 +59,7 @@ window.mostraApp = function() {
 };
 
 window.tornaAllaHome = function() {
-    document.getElementById('home-screen').style.display = 'block';
-    document.getElementById('app-interface').style.display = 'none';
-    document.getElementById('tab-storico').style.display = 'none';
-    document.getElementById('btnHomeFisso').style.display = 'none';
+    location.reload(); // Semplificato per resettare tutto lo stato
 };
 
 window.openTab = function(evt, tabName) {
@@ -96,7 +93,7 @@ window.renderChecklist = function() {
                         <label><input type="radio" name="${id}" value="SI"> ✅ SI</label>
                         <label><input type="radio" name="${id}" value="NO"> ❌ NO</label>
                     </div>
-                    <div style="display: flex; gap: 10px; align-items: center;">
+                    <div style="display: flex; gap: 10px; align-items: center; margin-top:10px;">
                         <textarea class="area-note" id="note_${id}" placeholder="Note eventuali..."></textarea>
                         <button type="button" class="btn-foto" onclick="window.scattaFoto('${id}')">📷</button>
                     </div>
@@ -154,7 +151,6 @@ window.resizeCanvas = function() {
     canvas.width = canvas.offsetWidth * ratio;
     canvas.height = canvas.offsetHeight * ratio;
     canvas.getContext("2d").scale(ratio, ratio);
-    if (signaturePad) signaturePad.clear();
 };
 
 // --- INVIO E INTEGRAZIONE ---
@@ -171,7 +167,7 @@ window.inviaVerifica = async function() {
     }
 
     btn.disabled = true;
-    btn.innerText = "Invio in corso...";
+    btn.innerText = "⏳ Invio in corso...";
 
     try {
         // Prepariamo la firma se presente
@@ -198,8 +194,8 @@ window.inviaVerifica = async function() {
         if (error) throw error;
         const savedRecord = data[0];
 
-        // 2. Chiamata alla Edge Function (Invio strutturato come 'record')
-        // Includiamo firma e foto nel payload per la generazione cloud
+        // 2. Chiamata alla Edge Function (Invio strutturato)
+        // Inviamo i dati grezzi per permettere alla funzione cloud di gestire il PDF professionale
         fetch(EDGE_FUNCTION_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -214,7 +210,7 @@ window.inviaVerifica = async function() {
           .then(resData => console.log("Edge Function Response:", resData))
           .catch(err => console.error("Errore background function:", err));
 
-        // 3. Generazione PDF locale (per download immediato)
+        // 3. Generazione PDF locale (per download immediato nel browser)
         const pdfBlob = await generaPDF();
         const fileURL = URL.createObjectURL(pdfBlob);
         
@@ -251,34 +247,53 @@ async function generaPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     const dataOggi = document.getElementById('dataVerifica').value;
+    
+    // Header
     doc.setFontSize(16);
     doc.setTextColor(0, 74, 153);
-    doc.text("VERBALE VERIFICA ANTINCENDIO", 70, 15);
+    doc.text("PANNELLI TERMICI S.R.L.", 105, 15, { align: 'center' });
+    doc.setFontSize(12);
+    doc.text("VERBALE VERIFICA ANTINCENDIO", 105, 22, { align: 'center' });
+    
     doc.setFontSize(10);
     doc.setTextColor(0, 0, 0);
-    doc.text(`Data: ${dataOggi}`, 10, 30);
-    doc.text(`Operatore 1: ${document.getElementById('operatore_1').value}`, 10, 37);
-    let y = 50;
+    doc.text(`Data: ${dataOggi}`, 15, 35);
+    doc.text(`Operatore: ${document.getElementById('operatore_1').value}`, 15, 42);
+    
+    let y = 55;
     for (const [key, domande] of Object.entries(sezioni)) {
         if (y > 260) { doc.addPage(); y = 20; }
         doc.setFont("helvetica", "bold");
-        doc.text(key.toUpperCase().replace(/_/g, ' '), 10, y);
-        y += 10;
+        doc.text(key.toUpperCase().replace(/_/g, ' '), 15, y);
+        y += 8;
         doc.setFont("helvetica", "normal");
-        for (let i = 0; i < domande.length; i++) {
+        
+        domande.forEach((d, i) => {
             const id = `${key}_q${i}`;
             const risp = document.querySelector(`input[name="${id}"]:checked`)?.value || "N.D.";
-            doc.text(`${i+1}. ${domande[i].substring(0, 70)}... : ${risp}`, 15, y);
-            y += 7;
+            
+            // Testo a capo se troppo lungo
+            const textLines = doc.splitTextToSize(`${i+1}. ${d}`, 140);
+            doc.text(textLines, 15, y);
+            doc.text(risp, 170, y);
+            
+            y += (textLines.length * 5) + 2;
+            
+            if (fotoChecklist[id]) {
+                doc.addImage(fotoChecklist[id], 'JPEG', 175, y - 5, 10, 10);
+            }
+            
             if (y > 270) { doc.addPage(); y = 20; }
-        }
+        });
         y += 5;
     }
+    
     if (signaturePad && !signaturePad.isEmpty()) {
         const sigData = signaturePad.toDataURL("image/png");
-        doc.text("Firma:", 10, y + 5);
-        doc.addImage(sigData, 'PNG', 10, y + 10, 50, 20);
+        doc.text("Firma del Tecnico:", 15, y + 5);
+        doc.addImage(sigData, 'PNG', 15, y + 10, 40, 15);
     }
+    
     return doc.output('blob');
 }
 
@@ -296,16 +311,19 @@ window.caricaStorico = async function() {
             .order('data_verifica', { ascending: false });
         if (error) throw error;
         container.innerHTML = data.map(v => `
-            <div class="card-verifica" style="border-left-color: ${v.processato ? '#27ae60' : '#8b98a7'};">
-                <strong>${v.data_verifica ? new Date(v.data_verifica).toLocaleDateString() : 'N.D.'}</strong> - ${v.operatore_1}
-                ${v.pdf_url ? `<br><small><a href="${v.pdf_url}" target="_blank">📄 Scarica Cloud PDF</a></small>` : ''}
+            <div class="card-verifica" style="border-left: 5px solid ${v.processato ? '#27ae60' : '#8b98a7'};">
+                <div style="display:flex; justify-content:space-between;">
+                    <strong>${v.data_verifica ? new Date(v.data_verifica).toLocaleDateString() : 'N.D.'}</strong>
+                    <span>${v.operatore_1}</span>
+                </div>
+                ${v.pdf_url ? `<div style="margin-top:10px;"><a href="${v.pdf_url}" target="_blank" style="color:#004a99; font-size:12px;">📄 Visualizza PDF Cloud</a></div>` : '<div style="font-size:11px; color:gray; margin-top:5px;">PDF in elaborazione...</div>'}
             </div>
         `).join('');
     } catch(e) { container.innerHTML = "Errore: " + e.message; }
 };
 
+// --- INIZIALIZZAZIONE ---
 window.addEventListener('load', () => {
-    window.renderChecklist();
     const di = document.getElementById('dataVerifica');
     if (di) di.valueAsDate = new Date();
 });
