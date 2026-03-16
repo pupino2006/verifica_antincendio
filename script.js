@@ -200,12 +200,11 @@ window.inviaVerifica = async function() {
     btn.innerText = "Invio in corso...";
 
     try {
-        // NOTA: Se ricevi errore "Could not find the 'data_ispezione' column", 
-        // verifica su Supabase se la colonna esiste esattamente con questo nome.
+        // Correzione: La colonna nel database si chiama 'data_verifica'
         const payload = {
             operatore_1: op1,
             operatore_2: document.getElementById('operatore_2').value,
-            data_ispezione: dataOggiStr, // Assicurati che il nome nel DB sia identico
+            data_verifica: dataOggiStr, 
             estintori: raccogliRisposte('estintori'),
             idranti: raccogliRisposte('idranti'),
             luci_emergenza: raccogliRisposte('luci_di_emergenza'),
@@ -250,7 +249,7 @@ window.inviaVerifica = async function() {
 
     } catch (err) {
         console.error(err);
-        alert("Errore durante l'invio: " + (err.message || "Problema di comunicazione con il database. Controlla lo schema delle colonne."));
+        alert("Errore durante l'invio: " + (err.message || "Problema di comunicazione con il database."));
     } finally {
         btn.disabled = false;
         btn.innerText = "🚀 SALVA E GENERA PDF";
