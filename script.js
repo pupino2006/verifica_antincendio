@@ -3,6 +3,9 @@ const SB_URL = "https://vnzrewcbnoqbqvzckome.supabase.co";
 const SB_KEY = "sb_publishable_Sq9txbu-PmKdbxETSx2cjw_WqWEFBPO"; 
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
+// URL della tua Edge Function (Sostituisci con l'URL reale dopo il deploy)
+const EDGE_FUNCTION_URL = "https://vnzrewcbnoqbqvzckome.supabase.co/functions/v1/generate-pdf-function";
+
 // Variabili globali
 let signaturePad;
 let fotoChecklist = {};
@@ -42,7 +45,7 @@ const sezioni = {
     ]
 };
 
-// --- ESPOSIZIONE GLOBALE DELLE FUNZIONI (RISOLVE TYPEERROR) ---
+// --- ESPOSIZIONE GLOBALE DELLE FUNZIONI ---
 
 window.mostraApp = function() {
     document.getElementById('home-screen').style.display = 'none';
@@ -50,11 +53,9 @@ window.mostraApp = function() {
     document.getElementById('tab-storico').style.display = 'none';
     document.getElementById('btnHomeFisso').style.display = 'block';
     
-    // Reset dello stato foto e checklist
     fotoChecklist = {};
     window.renderChecklist();
 
-    // Inizializza la firma con un piccolo ritardo per permettere al DOM di renderizzare il canvas
     setTimeout(() => {
         window.initSignature();
     }, 200);
@@ -83,7 +84,6 @@ window.openTab = function(evt, tabName) {
     const targetTab = document.getElementById(tabName);
     if (targetTab) targetTab.style.display = "block";
 
-    // Se entriamo nel tab invio, ricalcoliamo il canvas per la firma
     if (tabName === 'tab-invio') {
         setTimeout(() => {
             window.resizeCanvas();
@@ -93,7 +93,6 @@ window.openTab = function(evt, tabName) {
     if (evt && evt.currentTarget) {
         evt.currentTarget.classList.add("active");
     } else {
-        // Fallback per attivazione manuale del primo tab
         const firstBtn = document.querySelector(`.tab-btn[onclick*="${tabName}"]`);
         if (firstBtn) firstBtn.classList.add("active");
     }
@@ -164,7 +163,6 @@ window.cancellaFirma = function() {
     if (signaturePad) signaturePad.clear();
 };
 
-// --- LOGICA FIRMA (FIX TOUCH) ---
 window.initSignature = function() {
     const canvas = document.getElementById('signature-pad');
     if (canvas) {
@@ -179,7 +177,6 @@ window.initSignature = function() {
 window.resizeCanvas = function() {
     const canvas = document.getElementById('signature-pad');
     if (!canvas) return;
-    // Calcola il rapporto pixel per evitare sfocature su mobile
     const ratio = Math.max(window.devicePixelRatio || 1, 1);
     canvas.width = canvas.offsetWidth * ratio;
     canvas.height = canvas.offsetHeight * ratio;
@@ -187,10 +184,11 @@ window.resizeCanvas = function() {
     if (signaturePad) signaturePad.clear();
 };
 
-// --- INVIO E PDF ---
+// --- INVIO E INTEGRAZIONE EDGE FUNCTION ---
 window.inviaVerifica = async function() {
     const btn = document.getElementById('btnInvia');
     const op1 = document.getElementById('operatore_1').value;
+    const dataOggiStr = document.getElementById('dataVerifica').value;
     
     if (!op1) {
         alert("Seleziona l'Operatore 1 prima di inviare!");
@@ -202,27 +200,42 @@ window.inviaVerifica = async function() {
     btn.innerText = "Invio in corso...";
 
     try {
+        // Prepariamo i dati per il database
         const payload = {
             operatore_1: op1,
             operatore_2: document.getElementById('operatore_2').value,
+            data_ispezione: dataOggiStr, // Utilizziamo lo stesso nome campo della function
             estintori: raccogliRisposte('estintori'),
             idranti: raccogliRisposte('idranti'),
-            luci_emergenza: raccogliRisposte('luci_emergenza'),
-            porte: raccogliRisposte('porte'),
-            uscite: raccogliRisposte('uscite'),
+            luci_emergenza: raccogliRisposte('luci_di_emergenza'), // Fix nome chiave
+            porte: raccogliRisposte('porte_tagliafuoco'), // Fix nome chiave
+            uscite: raccogliRisposte('vie_di_esodo'), // Fix nome chiave
             created_at: new Date().toISOString()
         };
 
-        const { error } = await supabaseClient
+        // 1. Inserimento record nel Database
+        const { data, error } = await supabaseClient
             .from('verifiche_antincendio')
-            .insert([payload]);
+            .insert([payload])
+            .select(); // IMPORTANTE: .select() restituisce l'ID appena creato
 
         if (error) throw error;
 
+        const savedRecord = data[0];
+
+        // 2. Chiamata alla Edge Function per invio Email e salvataggio PDF finale
+        // Non attendiamo la risposta per non bloccare l'utente, gira in background
+        fetch(EDGE_FUNCTION_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(savedRecord)
+        }).catch(err => console.error("Errore background function:", err));
+
+        // 3. Generazione PDF locale (per download immediato dell'operatore)
         const pdfBlob = await generaPDF();
         const fileURL = URL.createObjectURL(pdfBlob);
         
-        alert("✅ Verifica salvata con successo!");
+        alert("✅ Verifica salvata con successo! L'email verrà inviata tra pochi istanti.");
         
         const link = document.createElement('a');
         link.href = fileURL;
@@ -242,6 +255,8 @@ window.inviaVerifica = async function() {
 
 function raccogliRisposte(sezione) {
     let testo = "";
+    if (!sezioni[sezione]) return "Nessuna domanda";
+    
     sezioni[sezione].forEach((d, i) => {
         const val = document.querySelector(`input[name="${sezione}_q${i}"]:checked`)?.value || "N.D.";
         const nota = document.getElementById(`note_${sezione}_q${i}`).value;
@@ -255,7 +270,6 @@ async function generaPDF() {
     const doc = new jsPDF();
     const dataOggi = document.getElementById('dataVerifica').value;
 
-    // Gestione Logo (Tenta di caricarlo, se fallisce prosegue)
     const imgLogo = document.querySelector('.header-logo img');
     if (imgLogo && imgLogo.complete) {
         try { doc.addImage(imgLogo, 'PNG', 10, 5, 40, 15); } catch(e) {}
@@ -315,8 +329,9 @@ window.caricaStorico = async function() {
 
         if (error) throw error;
         container.innerHTML = data.map(v => `
-            <div class="card-verifica" style="border-left-color: #8b98a7;">
+            <div class="card-verifica" style="border-left-color: ${v.processato ? '#27ae60' : '#8b98a7'};">
                 <strong>${new Date(v.created_at).toLocaleDateString()}</strong> - ${v.operatore_1}
+                ${v.pdf_url ? `<br><small><a href="${v.pdf_url}" target="_blank">📄 Scarica Cloud PDF</a></small>` : ''}
             </div>
         `).join('');
     } catch(e) {
