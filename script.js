@@ -45,21 +45,16 @@ const sezioni = {
     ]
 };
 
-// --- ESPOSIZIONE GLOBALE DELLE FUNZIONI ---
+// --- FUNZIONI DI INTERFACCIA ---
 
 window.mostraApp = function() {
     document.getElementById('home-screen').style.display = 'none';
     document.getElementById('app-interface').style.display = 'block';
     document.getElementById('tab-storico').style.display = 'none';
     document.getElementById('btnHomeFisso').style.display = 'block';
-    
     fotoChecklist = {};
     window.renderChecklist();
-
-    setTimeout(() => {
-        window.initSignature();
-    }, 200);
-
+    setTimeout(() => { window.initSignature(); }, 200);
     window.openTab(null, 'tab-info');
 };
 
@@ -72,24 +67,12 @@ window.tornaAllaHome = function() {
 
 window.openTab = function(evt, tabName) {
     const contents = document.getElementsByClassName("tab-content");
-    for (let i = 0; i < contents.length; i++) {
-        contents[i].style.display = "none";
-    }
-
+    for (let i = 0; i < contents.length; i++) contents[i].style.display = "none";
     const btns = document.getElementsByClassName("tab-btn");
-    for (let i = 0; i < btns.length; i++) {
-        btns[i].classList.remove("active");
-    }
-
+    for (let i = 0; i < btns.length; i++) btns[i].classList.remove("active");
     const targetTab = document.getElementById(tabName);
     if (targetTab) targetTab.style.display = "block";
-
-    if (tabName === 'tab-invio') {
-        setTimeout(() => {
-            window.resizeCanvas();
-        }, 100);
-    }
-
+    if (tabName === 'tab-invio') setTimeout(() => { window.resizeCanvas(); }, 100);
     if (evt && evt.currentTarget) {
         evt.currentTarget.classList.add("active");
     } else {
@@ -101,7 +84,6 @@ window.openTab = function(evt, tabName) {
 window.renderChecklist = function() {
     const container = document.getElementById('checklist-container');
     if (!container) return;
-    
     let html = '';
     for (const [key, domande] of Object.entries(sezioni)) {
         html += `<div class="sezione-titolo">${key.toUpperCase().replace(/_/g, ' ')}</div>`;
@@ -142,10 +124,8 @@ window.gestisciFoto = function(event, id) {
         reader.onload = function(e) {
             const base64 = e.target.result;
             fotoChecklist[id] = base64;
-            const img = document.getElementById(`img_${id}`);
-            const preview = document.getElementById(`preview_${id}`);
-            if (img) img.src = base64;
-            if (preview) preview.style.display = "block";
+            document.getElementById(`img_${id}`).src = base64;
+            document.getElementById(`preview_${id}`).style.display = "block";
         };
         reader.readAsDataURL(file);
     }
@@ -153,23 +133,16 @@ window.gestisciFoto = function(event, id) {
 
 window.rimuoviFoto = function(id) {
     delete fotoChecklist[id];
-    const preview = document.getElementById(`preview_${id}`);
-    const input = document.getElementById(`input_file_${id}`);
-    if (preview) preview.style.display = "none";
-    if (input) input.value = "";
+    document.getElementById(`preview_${id}`).style.display = "none";
+    document.getElementById(`input_file_${id}`).value = "";
 };
 
-window.cancellaFirma = function() {
-    if (signaturePad) signaturePad.clear();
-};
+window.cancellaFirma = function() { if (signaturePad) signaturePad.clear(); };
 
 window.initSignature = function() {
     const canvas = document.getElementById('signature-pad');
     if (canvas) {
-        signaturePad = new SignaturePad(canvas, {
-            backgroundColor: 'rgba(255, 255, 255, 0)',
-            penColor: 'rgb(0, 0, 0)'
-        });
+        signaturePad = new SignaturePad(canvas, { backgroundColor: 'rgba(255, 255, 255, 0)', penColor: 'rgb(0, 0, 0)' });
         window.resizeCanvas();
     }
 };
@@ -184,7 +157,8 @@ window.resizeCanvas = function() {
     if (signaturePad) signaturePad.clear();
 };
 
-// --- INVIO E INTEGRAZIONE EDGE FUNCTION ---
+// --- INVIO E INTEGRAZIONE ---
+
 window.inviaVerifica = async function() {
     const btn = document.getElementById('btnInvia');
     const op1 = document.getElementById('operatore_1').value;
@@ -200,8 +174,9 @@ window.inviaVerifica = async function() {
     btn.innerText = "Invio in corso...";
 
     try {
-        // Rimosso 'created_at' e 'data_ispezione'
-        // Usiamo solo 'data_verifica' come confermato essere presente nel DB
+        // Prepariamo la firma se presente
+        const firmaBase64 = (signaturePad && !signaturePad.isEmpty()) ? signaturePad.toDataURL("image/png") : null;
+
         const payload = {
             operatore_1: op1,
             operatore_2: document.getElementById('operatore_2').value,
@@ -220,25 +195,30 @@ window.inviaVerifica = async function() {
             .insert([payload])
             .select();
 
-        if (error) {
-            console.error("Errore Supabase:", error);
-            throw error;
-        }
-
+        if (error) throw error;
         const savedRecord = data[0];
 
-        // 2. Chiamata alla Edge Function
+        // 2. Chiamata alla Edge Function (Invio strutturato come 'record')
+        // Includiamo firma e foto nel payload per la generazione cloud
         fetch(EDGE_FUNCTION_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(savedRecord)
-        }).catch(err => console.error("Errore background function:", err));
+            body: JSON.stringify({
+                record: {
+                    ...savedRecord,
+                    firma_base64: firmaBase64,
+                    foto_checklist: fotoChecklist
+                }
+            })
+        }).then(res => res.json())
+          .then(resData => console.log("Edge Function Response:", resData))
+          .catch(err => console.error("Errore background function:", err));
 
-        // 3. Generazione PDF locale
+        // 3. Generazione PDF locale (per download immediato)
         const pdfBlob = await generaPDF();
         const fileURL = URL.createObjectURL(pdfBlob);
         
-        alert("✅ Verifica salvata con successo!");
+        alert("✅ Verifica salvata! Il PDF è in fase di generazione cloud e invio email.");
         
         const link = document.createElement('a');
         link.href = fileURL;
@@ -249,7 +229,7 @@ window.inviaVerifica = async function() {
 
     } catch (err) {
         console.error(err);
-        alert("Errore durante l'invio: " + (err.message || "Problema di comunicazione con il database."));
+        alert("Errore: " + (err.message || "Problema di comunicazione."));
     } finally {
         btn.disabled = false;
         btn.innerText = "🚀 SALVA E GENERA PDF";
@@ -259,7 +239,6 @@ window.inviaVerifica = async function() {
 function raccogliRisposte(sezione) {
     let testo = "";
     if (!sezioni[sezione]) return "Nessuna domanda";
-    
     sezioni[sezione].forEach((d, i) => {
         const val = document.querySelector(`input[name="${sezione}_q${i}"]:checked`)?.value || "N.D.";
         const nota = document.getElementById(`note_${sezione}_q${i}`).value;
@@ -272,25 +251,20 @@ async function generaPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     const dataOggi = document.getElementById('dataVerifica').value;
-
     doc.setFontSize(16);
     doc.setTextColor(0, 74, 153);
     doc.text("VERBALE VERIFICA ANTINCENDIO", 70, 15);
-
     doc.setFontSize(10);
     doc.setTextColor(0, 0, 0);
     doc.text(`Data: ${dataOggi}`, 10, 30);
     doc.text(`Operatore 1: ${document.getElementById('operatore_1').value}`, 10, 37);
-
     let y = 50;
-
     for (const [key, domande] of Object.entries(sezioni)) {
         if (y > 260) { doc.addPage(); y = 20; }
         doc.setFont("helvetica", "bold");
         doc.text(key.toUpperCase().replace(/_/g, ' '), 10, y);
         y += 10;
         doc.setFont("helvetica", "normal");
-
         for (let i = 0; i < domande.length; i++) {
             const id = `${key}_q${i}`;
             const risp = document.querySelector(`input[name="${id}"]:checked`)?.value || "N.D.";
@@ -300,13 +274,11 @@ async function generaPDF() {
         }
         y += 5;
     }
-
     if (signaturePad && !signaturePad.isEmpty()) {
         const sigData = signaturePad.toDataURL("image/png");
         doc.text("Firma:", 10, y + 5);
         doc.addImage(sigData, 'PNG', 10, y + 10, 50, 20);
     }
-
     return doc.output('blob');
 }
 
@@ -315,16 +287,13 @@ window.caricaStorico = async function() {
     document.getElementById('app-interface').style.display = 'none';
     document.getElementById('tab-storico').style.display = 'block';
     document.getElementById('btnHomeFisso').style.display = 'block';
-
     const container = document.getElementById('lista-verifiche');
     container.innerHTML = "<p style='text-align:center;'>Caricamento...</p>";
-    
     try {
         const { data, error } = await supabaseClient
             .from('verifiche_antincendio')
             .select('*')
-            .order('data_verifica', { ascending: false }); // Ordiniamo per la colonna esistente
-
+            .order('data_verifica', { ascending: false });
         if (error) throw error;
         container.innerHTML = data.map(v => `
             <div class="card-verifica" style="border-left-color: ${v.processato ? '#27ae60' : '#8b98a7'};">
@@ -332,12 +301,9 @@ window.caricaStorico = async function() {
                 ${v.pdf_url ? `<br><small><a href="${v.pdf_url}" target="_blank">📄 Scarica Cloud PDF</a></small>` : ''}
             </div>
         `).join('');
-    } catch(e) {
-        container.innerHTML = "Errore: " + e.message;
-    }
+    } catch(e) { container.innerHTML = "Errore: " + e.message; }
 };
 
-// --- INIT ---
 window.addEventListener('load', () => {
     window.renderChecklist();
     const di = document.getElementById('dataVerifica');
