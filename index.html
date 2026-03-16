@@ -281,7 +281,6 @@
             else sigPad2.clear();
         };
 
-        // Funzione per convertire il logo in base64 per jsPDF
         async function getBase64ImageFromURL(url) {
             try {
                 const res = await fetch(url);
@@ -292,35 +291,69 @@
                     reader.onerror = reject;
                     reader.readAsDataURL(blob);
                 });
-            } catch (err) {
-                return null;
-            }
+            } catch (err) { return null; }
         }
 
         window.inviaVerifica = async function() {
             const op1 = document.getElementById('operatore_1').value;
             const op2 = document.getElementById('operatore_2').value;
+            const dataVerifica = document.getElementById('dataVerifica').value;
+            
             if (!op1) return alert("Seleziona Operatore 1!");
 
             const btn = document.getElementById('btnInvia');
             btn.disabled = true;
-            btn.innerText = "Salvataggio...";
+            btn.innerText = "Invio in corso...";
 
             try {
-                const payload = { operatore_1: op1, operatore_2: op2 || null };
-                await supabaseClient.from('verifiche_antincendio').insert([payload]);
+                // 1. Raccogliamo i dati per il DB
+                const payload = { 
+                    operatore_1: op1, 
+                    operatore_2: op2 || null,
+                    data_verifica: dataVerifica,
+                    // Mappa qui gli altri campi se necessario
+                };
 
-                const pdf = await window.generaPDF();
-                const url = URL.createObjectURL(pdf);
+                // 2. Salvataggio su DB
+                const { error: dbError } = await supabaseClient.from('verifiche_antincendio').insert([payload]);
+                if (dbError) throw dbError;
+
+                // 3. Generazione PDF
+                const pdfBlob = await window.generaPDF();
+                
+                // Conversione per Edge Function
+                const reader = new FileReader();
+                const pdfBase64 = await new Promise((resolve) => {
+                    reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                    reader.readAsDataURL(pdfBlob);
+                });
+
+                // 4. Invio MAIL tramite Edge Function
+                try {
+                    await supabaseClient.functions.invoke('send-report', {
+                        body: { 
+                            pdfBase64: pdfBase64, 
+                            operatore: op1, 
+                            data: dataVerifica,
+                            destinatario: "geom.rip@gmail.com" 
+                        },
+                    });
+                } catch (fnErr) {
+                    console.warn("Mail non inviata (Function non configurata?):", fnErr);
+                }
+
+                // 5. Download locale del PDF per sicurezza
+                const url = URL.createObjectURL(pdfBlob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `Verifica_${op1.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
+                a.download = `Verifica_${op1.replace(/\s+/g, '_')}_${dataVerifica}.pdf`;
                 a.click();
 
-                alert("✅ Report Generato!");
+                alert("✅ Report salvato, inviato via mail e scaricato correttamente!");
                 window.tornaAllaHome();
+
             } catch (e) {
-                alert("Errore: " + e.message);
+                alert("Errore durante l'invio: " + e.message);
             } finally {
                 btn.disabled = false;
                 btn.innerText = "🚀 INVIA E SALVA PDF";
@@ -332,7 +365,6 @@
             const doc = new jsPDF();
             let y = 15;
 
-            // Inserimento Logo (Tentativo di caricamento immagine pt.png)
             const logoBase64 = await getBase64ImageFromURL('pt.png');
             if (logoBase64) {
                 doc.addImage(logoBase64, 'PNG', 160, 10, 35, 12);
@@ -415,9 +447,9 @@
             const container = document.getElementById('lista-verifiche');
             container.innerHTML = "Caricamento...";
             try {
-                const { data } = await supabaseClient.from('verifiche_antincendio').select('operatore_1, created_at').limit(10);
-                container.innerHTML = data.map(v => `<div class='card-verifica'>${new Date(v.created_at).toLocaleDateString()} - ${v.operatore_1}</div>`).join('');
-            } catch(e) { container.innerHTML = "Errore."; }
+                const { data } = await supabaseClient.from('verifiche_antincendio').select('operatore_1, data_verifica').order('data_verifica', {ascending: false}).limit(10);
+                container.innerHTML = data.map(v => `<div class='card-verifica'>${new Date(v.data_verifica).toLocaleDateString()} - ${v.operatore_1}</div>`).join('');
+            } catch(e) { container.innerHTML = "Errore durante il caricamento dello storico."; }
         };
 
         window.addEventListener('DOMContentLoaded', () => {
