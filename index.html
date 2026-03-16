@@ -199,7 +199,6 @@
     <button id="btnHomeFisso" class="btn-home-fixed" onclick="tornaAllaHome()">🏠 HOME</button>
 
     <div class="header-logo">
-        <!-- Placeholder del logo, verrà sostituito nel PDF dal file locale se disponibile -->
         <img id="mainLogo" src="pt.png" alt="Logo PT" onerror="this.src='https://via.placeholder.com/200x50?text=Pannelli+Termici'">
     </div>
 
@@ -316,34 +315,32 @@
             "estintori": [
                 "Gli estintori sono segnalati da apposita cartellonistica?",
                 "Gli estintori sono prontamente individuabili e facilmente accessibili?",
-                "Si è potuta riscontrare l’ASSENZA di anomalie e/o fattori di pericolo sugli estintori (es. manometro al di fuori della zona verde, ammaccature e/o crepe, spina di sicurezza mancante, ecc.)?",
+                "Si è potuta riscontrare l’ASSENZA di anomalie e/o fattori di pericolo sugli estintori?",
                 "L’ultimo controllo sugli estintori da parte di ditta specializzata è stato effettuato non oltre sei mesi fa?"
             ],
             "idranti": [
                 "Gli idranti sono segnalati da apposita cartellonistica?",
                 "Gli idranti sono prontamente individuabili e facilmente accessibili?",
-                "Si è potuta riscontrare l’ASSENZA di anomalie e/o fattori di pericolo sugli idranti (es. mancanza di lancia erogatrice, manichetta non correttamente avvolta, cassetta ammaccata, ecc.)?",
-                "L’ultimo controllo sugli idranti da parte di ditta specializzata è stato effettuato non oltre sei mesi fa?"
+                "Si è potuta riscontrare l’ASSENZA di anomalie sugli idranti?",
+                "L’ultimo controllo sugli idranti è stato effettuato non oltre sei mesi fa?"
             ],
             "luci_di_emergenza": [
-                "Le luci di emergenza sono correttamente funzionanti in caso di mancanza di alimentazione elettrica?",
-                "Si è potuta riscontrare l’ASSENZA di anomalie e/o fattori di pericolo sulle luci di emergenza (es. mancanza cartellonistica, malfunzionamento batterie, ecc.)?"
+                "Le luci di emergenza sono correttamente funzionanti?",
+                "Si è potuta riscontrare l’ASSENZA di anomalie sulle luci?"
             ],
             "impianto_irai": [
-                "I dispositivi di rilevazione automatica e i pulsanti manuali di allarme incendio sono prontamente individuabili e facilmente accessibili?",
-                "Si è potuta riscontrare l’ASSENZA di anomalie e/o fattori di pericolo sui dispositivi dell’IRAI (es. rilevatori non adeguatamente puliti, mancata attivazione, ecc.)?"
+                "I dispositivi IRAI sono prontamente individuabili?",
+                "Si è potuta riscontrare l’ASSENZA di anomalie sui dispositivi IRAI?"
             ],
             "porte_tagliafuoco": [
-                "Le porte tagliafuoco sono correttamente segnalate da specifica cartellonistica, e priva di ostacoli alla loro apertura e/o chiusura?",
-                "Le prove di aperture e/o chiusura delle porte tagliafuoco ha confermato il loro corretto funzionamento?",
-                "Si è potuta riscontrare l’ASSENZA di anomalie e/o fattori di pericolo sulle porte tagliafuoco (es. porta chiusa a chiave, maniglione rotto, ecc.)?",
-                "L’ultimo controllo sulle porte tagliafuoco da parte di ditta specializzata è stato effettuato non oltre sei mesi fa?"
+                "Le porte tagliafuoco sono correttamente segnalate e libere?",
+                "Le prove di apertura/chiusura hanno confermato il corretto funzionamento?",
+                "L’ultimo controllo è stato effettuato non oltre sei mesi fa?"
             ],
             "vie_di_esodo": [
-                "Le vie di esodo e le uscite di sicurezza sono segnalate mediante apposita cartellonistica?",
-                "I percorsi di esodo sono privi di materiale che potrebbe fungere da ostacolo all’esodo stesso?",
-                "Le vie di esodo sono adeguatamente illuminate?",
-                "Si è potuta riscontrare l’ASSENZA di anomalie e/o fattori di pericolo sulle vie di esodo e le uscite di sicurezza (es. presenza di combustibili e/o infiammabili, porte non apribili, ecc.)?"
+                "Le vie di esodo sono segnalate?",
+                "I percorsi sono privi di ostacoli?",
+                "Le vie di esodo sono adeguatamente illuminate?"
             ]
         };
 
@@ -352,7 +349,7 @@
             document.getElementById('home-screen').style.display = 'none';
             document.getElementById('app-interface').style.display = 'block';
             document.getElementById('btnHomeFisso').style.display = 'block';
-            fotoChecklist = {}; // Resetta le foto per la nuova sessione
+            fotoChecklist = {};
             window.renderChecklist();
             window.openTab(null, 'tab-info');
         };
@@ -369,20 +366,13 @@
             for (let i = 0; i < contents.length; i++) contents[i].style.display = "none";
             const btns = document.getElementsByClassName("tab-btn");
             for (let i = 0; i < btns.length; i++) btns[i].classList.remove("active");
-            
             document.getElementById(tabName).style.display = "block";
-            
             if (evt) evt.currentTarget.classList.add("active");
             else document.getElementById('btn-' + tabName).classList.add("active");
-
-            // Gestione specifica per il tab firma per inizializzare i canvas
-            if (tabName === 'tab-invio') {
-                setTimeout(initSignatures, 300);
-            }
+            if (tabName === 'tab-invio') setTimeout(initSignatures, 300);
             window.scrollTo(0,0);
         };
 
-        // --- RENDER CHECKLIST ---
         window.renderChecklist = function() {
             const container = document.getElementById('checklist-container');
             let html = '';
@@ -397,11 +387,9 @@
                                 <label><input type="radio" name="${id}" value="SI"> SI</label>
                                 <label><input type="radio" name="${id}" value="NO"> NO</label>
                             </div>
-                            <button class="btn-foto" onclick="document.getElementById('input_${id}').click()">📷 SCATTA O CARICA FOTO</button>
-                            <div id="preview_${id}" class="photo-preview">
-                                <img id="img_${id}" src="">
-                            </div>
-                            <textarea id="note_${id}" class="area-note" placeholder="Aggiungi eventuali note o anomalie..."></textarea>
+                            <button class="btn-foto" onclick="document.getElementById('input_${id}').click()">📷 FOTO</button>
+                            <div id="preview_${id}" class="photo-preview"><img id="img_${id}" src=""></div>
+                            <textarea id="note_${id}" class="area-note" placeholder="Note..."></textarea>
                             <input type="file" id="input_${id}" style="display:none" accept="image/*" capture="environment" onchange="caricaFoto(event, '${id}')">
                         </div>`;
                 });
@@ -422,19 +410,11 @@
             }
         };
 
-        // --- GESTIONE FIRMA ---
         window.initSignatures = function() {
             const c1 = document.getElementById('signature-pad-1');
             const c2 = document.getElementById('signature-pad-2');
-            
-            if (c1) {
-                sigPad1 = new SignaturePad(c1, { penColor: 'rgb(0, 0, 0)' });
-                resizeCanvas(c1, sigPad1);
-            }
-            if (c2) {
-                sigPad2 = new SignaturePad(c2, { penColor: 'rgb(0, 0, 0)' });
-                resizeCanvas(c2, sigPad2);
-            }
+            if (c1) { sigPad1 = new SignaturePad(c1); resizeCanvas(c1, sigPad1); }
+            if (c2) { sigPad2 = new SignaturePad(c2); resizeCanvas(c2, sigPad2); }
         };
 
         function resizeCanvas(canvas, pad) {
@@ -442,215 +422,61 @@
             canvas.width = canvas.offsetWidth * ratio;
             canvas.height = canvas.offsetHeight * ratio;
             canvas.getContext("2d").scale(ratio, ratio);
-            pad.clear(); // Pulisce per evitare stiramenti
+            pad.clear();
         }
 
-        window.cancellaFirma = function(n) {
-            if (n === 1) sigPad1.clear();
-            else sigPad2.clear();
-        };
+        window.cancellaFirma = function(n) { n === 1 ? sigPad1.clear() : sigPad2.clear(); };
 
-        // --- UTILITY PER IMMAGINI ---
-        async function getBase64ImageFromURL(url) {
-            try {
-                const res = await fetch(url);
-                const blob = await res.blob();
-                return new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(blob);
-                });
-            } catch (err) { 
-                console.error("Errore caricamento immagine:", url);
-                return null; 
-            }
-        }
-
-        // --- SALVATAGGIO E INVIO ---
         window.inviaVerifica = async function() {
             const op1 = document.getElementById('operatore_1').value;
             const op2 = document.getElementById('operatore_2').value;
-            const data_verifica = document.getElementById('data_verifica').value;
             
-            if (!op1 || !data_verifica) {
-                alert("Per favore, compila l'Operatore 1 e la Data nel tab INFO.");
-                window.openTab(null, 'tab-info');
-                return;
-            }
-
-            if (sigPad1.isEmpty()) {
-                alert("La firma dell'Operatore 1 è obbligatoria!");
-                return;
-            }
+            if (!op1) { alert("Operatore 1 obbligatorio!"); return; }
+            if (sigPad1.isEmpty()) { alert("Firma obbligatoria!"); return; }
 
             const btn = document.getElementById('btnInvia');
             btn.disabled = true;
-            btn.innerText = "⏳ ELABORAZIONE IN CORSO...";
+            btn.innerText = "⏳ INVIO IN CORSO...";
 
             try {
-                // 1. Prepara il payload per il Database
+                // 1. Salvataggio su DB (created_at è automatico)
                 const payload = { 
                     operatore_1: op1, 
                     operatore_2: op2 || null,
-                    data_ispezione: data_verifica,
-                    // Puoi aggiungere qui una stringa JSON con tutte le risposte se necessario nel DB
-                    note_generali: "Generato da Web App"
+                    processato: false
                 };
 
-                // 2. Salvataggio su Supabase DB
-                const { error: dbError } = await supabaseClient.from('verifiche_antincendio').insert([payload]);
+                const { data: saved, error: dbError } = await supabaseClient
+                    .from('verifiche_antincendio')
+                    .insert([payload])
+                    .select();
+
                 if (dbError) throw dbError;
 
-                // 3. Genera il PDF
-                const pdfBlob = await window.generaPDF();
-                
-                // 4. Conversione PDF in Base64 per la mail
-                const reader = new FileReader();
-                const pdfBase64 = await new Promise((resolve) => {
-                    reader.onloadend = () => resolve(reader.result.split(',')[1]);
-                    reader.readAsDataURL(pdfBlob);
+                // 2. Chiamata alla Edge Function (nome: 'antincendio')
+                // Inviamo il record appena salvato affinché la funzione lo processi
+                await supabaseClient.functions.invoke('antincendio', {
+                    body: { record: saved[0] }
                 });
 
-                // 5. Invocazione Edge Function (Invio Mail)
-                try {
-                    const { data: fnData, error: fnError } = await supabaseClient.functions.invoke('send-report', {
-                        body: { 
-                            pdfBase64: pdfBase64, 
-                            operatore: op1, 
-                            data: data_verifica,
-                            destinatario: "geom.rip@gmail.com" 
-                        },
-                    });
-                    if (fnError) console.error("Errore Mail:", fnError);
-                } catch (fnErr) {
-                    console.warn("Possibile problema con la Edge Function:", fnErr);
-                }
-
-                // 6. Download Locale per l'utente
-                const url = URL.createObjectURL(pdfBlob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `Verifica_Antincendio_${op1.replace(/\s+/g, '_')}_${data_verifica}.pdf`;
-                a.click();
-
-                alert("✅ VERIFICA SALVATA!\nIl report è stato salvato nel database e inviato via mail.");
+                alert("✅ VERIFICA SALVATA E REPORT INVIATO!");
                 window.tornaAllaHome();
 
             } catch (e) {
-                alert("Errore critico: " + e.message);
-                console.error(e);
+                alert("Errore: " + e.message);
             } finally {
                 btn.disabled = false;
                 btn.innerText = "🚀 SALVA E INVIA REPORT";
             }
         };
 
-        window.generaPDF = async function() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            let y = 15;
-
-            // Logo in alto a destra
-            const logoBase64 = await getBase64ImageFromURL('pt.png');
-            if (logoBase64) {
-                doc.addImage(logoBase64, 'PNG', 150, 10, 45, 12);
-            }
-
-            // Titolo
-            doc.setFontSize(18);
-            doc.setTextColor(0, 74, 153);
-            doc.setFont(undefined, 'bold');
-            doc.text("VERIFICA PERIODICA ANTINCENDIO", 10, 22);
-            
-            y = 35;
-            doc.setFontSize(10);
-            doc.setTextColor(50);
-            doc.setFont(undefined, 'normal');
-            doc.text(`Operatore 1: ${document.getElementById('operatore_1').value}`, 10, y);
-            doc.text(`Operatore 2: ${document.getElementById('operatore_2').value || 'N/A'}`, 10, y + 6);
-            doc.text(`Data Intervento: ${document.getElementById('data_verifica').value}`, 110, y);
-            
-            y += 18;
-
-            // Ciclo sezioni
-            for (const [key, domande] of Object.entries(sezioni)) {
-                // Intestazione Sezione
-                if (y > 250) { doc.addPage(); y = 20; }
-                doc.setFont(undefined, 'bold');
-                doc.setFillColor(0, 74, 153);
-                doc.rect(10, y - 5, 190, 8, 'F');
-                doc.setTextColor(255);
-                doc.text(key.toUpperCase().replace(/_/g, ' '), 12, y);
-                y += 10;
-                doc.setTextColor(0);
-                doc.setFont(undefined, 'normal');
-
-                domande.forEach((domanda, index) => {
-                    const id = `${key}_q${index}`;
-                    const risposta = document.querySelector(`input[name="${id}"]:checked`)?.value || "N.D.";
-                    const nota = document.getElementById(`note_${id}`).value;
-
-                    if (y > 250) { doc.addPage(); y = 20; }
-                    
-                    // Domanda + Risposta
-                    const splitDomanda = doc.splitTextToSize(`${index + 1}. ${domanda}`, 165);
-                    doc.text(splitDomanda, 10, y);
-                    doc.setFont(undefined, 'bold');
-                    doc.text(risposta, 185, y);
-                    doc.setFont(undefined, 'normal');
-                    y += (splitDomanda.length * 6);
-
-                    // Note se presenti
-                    if (nota) {
-                        doc.setFontSize(8);
-                        doc.setTextColor(100);
-                        const splitNota = doc.splitTextToSize(`Nota: ${nota}`, 160);
-                        doc.text(splitNota, 15, y);
-                        y += (splitNota.length * 5);
-                        doc.setFontSize(10);
-                        doc.setTextColor(0);
-                    }
-
-                    // Foto se presente
-                    if (fotoChecklist[id]) {
-                        if (y > 220) { doc.addPage(); y = 20; }
-                        doc.addImage(fotoChecklist[id], 'JPEG', 15, y, 40, 30);
-                        y += 35;
-                    }
-                    y += 2; // Spazio tra domande
-                });
-                y += 5; // Spazio tra sezioni
-            }
-
-            // Firme
-            if (y > 240) { doc.addPage(); y = 20; }
-            doc.setFont(undefined, 'bold');
-            doc.text("Firme di Convalida", 10, y);
-            y += 10;
-            
-            doc.setFontSize(8);
-            doc.text("Firma Operatore 1", 10, y);
-            if (sigPad1 && !sigPad1.isEmpty()) {
-                doc.addImage(sigPad1.toDataURL(), 'PNG', 10, y + 2, 50, 20);
-            }
-            
-            if (!sigPad2.isEmpty()) {
-                doc.text("Firma Operatore 2", 110, y);
-                doc.addImage(sigPad2.toDataURL(), 'PNG', 110, y + 2, 50, 20);
-            }
-
-            return doc.output('blob');
-        };
-
-        // --- STORICO ---
         window.caricaStorico = async function() {
             document.getElementById('home-screen').style.display = 'none';
             document.getElementById('tab-storico').style.display = 'block';
             document.getElementById('btnHomeFisso').style.display = 'block';
             
             const container = document.getElementById('lista-verifiche');
-            container.innerHTML = "<p style='text-align:center;'>Caricamento in corso...</p>";
+            container.innerHTML = "Caricamento...";
             
             try {
                 const { data, error } = await supabaseClient
@@ -661,31 +487,19 @@
 
                 if (error) throw error;
 
-                if (data.length === 0) {
-                    container.innerHTML = "<p style='text-align:center;'>Nessun report trovato.</p>";
-                    return;
-                }
-
                 container.innerHTML = data.map(v => `
-                    <div class="card-verifica" style="border-left-color: #8b98a7;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <div>
-                                <strong>${new Date(v.data_ispezione || v.created_at).toLocaleDateString()}</strong><br>
-                                <span style="font-size:0.9rem; color:#666;">Operatore: ${v.operatore_1}</span>
-                            </div>
-                            <span style="font-size:12px; background:#eee; padding:4px 8px; border-radius:4px;">ID: ${v.id}</span>
-                        </div>
+                    <div class="card-verifica">
+                        <strong>${new Date(v.created_at).toLocaleString('it-IT')}</strong><br>
+                        <span>Operatore: ${v.operatore_1}</span>
                     </div>
                 `).join('');
             } catch(e) { 
-                container.innerHTML = "<p style='color:red; text-align:center;'>Errore nel caricamento dei dati.</p>";
+                container.innerHTML = "Errore caricamento.";
             }
         };
 
-        // Init Data Odierna
         window.addEventListener('DOMContentLoaded', () => {
-            const dateInput = document.getElementById('data_verifica');
-            if (dateInput) dateInput.valueAsDate = new Date();
+            document.getElementById('data_verifica').valueAsDate = new Date();
         });
     </script>
 </body>
