@@ -262,7 +262,7 @@
             </div>
             <div class="input-group">
                 <label>DATA INTERVENTO</label>
-                <input type="date" id="dataVerifica">
+                <input type="date" id="data_verifica">
             </div>
             <button class="btn-main" onclick="document.getElementById('btn-tab-check').click()" style="margin-top: 20px;">AVANTI ➔</button>
         </div>
@@ -471,9 +471,9 @@
         window.inviaVerifica = async function() {
             const op1 = document.getElementById('operatore_1').value;
             const op2 = document.getElementById('operatore_2').value;
-            const dataVerifica = document.getElementById('dataVerifica').value;
+            const data_verifica = document.getElementById('data_verifica').value;
             
-            if (!op1 || !dataVerifica) {
+            if (!op1 || !data_verifica) {
                 alert("Per favore, compila l'Operatore 1 e la Data nel tab INFO.");
                 window.openTab(null, 'tab-info');
                 return;
@@ -493,7 +493,7 @@
                 const payload = { 
                     operatore_1: op1, 
                     operatore_2: op2 || null,
-                    data_ispezione: dataVerifica,
+                    data_ispezione: data_verifica,
                     // Puoi aggiungere qui una stringa JSON con tutte le risposte se necessario nel DB
                     note_generali: "Generato da Web App"
                 };
@@ -518,7 +518,7 @@
                         body: { 
                             pdfBase64: pdfBase64, 
                             operatore: op1, 
-                            data: dataVerifica,
+                            data: data_verifica,
                             destinatario: "geom.rip@gmail.com" 
                         },
                     });
@@ -531,7 +531,7 @@
                 const url = URL.createObjectURL(pdfBlob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `Verifica_Antincendio_${op1.replace(/\s+/g, '_')}_${dataVerifica}.pdf`;
+                a.download = `Verifica_Antincendio_${op1.replace(/\s+/g, '_')}_${data_verifica}.pdf`;
                 a.click();
 
                 alert("✅ VERIFICA SALVATA!\nIl report è stato salvato nel database e inviato via mail.");
@@ -569,7 +569,7 @@
             doc.setFont(undefined, 'normal');
             doc.text(`Operatore 1: ${document.getElementById('operatore_1').value}`, 10, y);
             doc.text(`Operatore 2: ${document.getElementById('operatore_2').value || 'N/A'}`, 10, y + 6);
-            doc.text(`Data Intervento: ${document.getElementById('dataVerifica').value}`, 110, y);
+            doc.text(`Data Intervento: ${document.getElementById('data_verifica').value}`, 110, y);
             
             y += 18;
 
@@ -684,7 +684,7 @@
 
         // Init Data Odierna
         window.addEventListener('DOMContentLoaded', () => {
-            const dateInput = document.getElementById('dataVerifica');
+            const dateInput = document.getElementById('data_verifica');
             if (dateInput) dateInput.valueAsDate = new Date();
         });
     </script>
