@@ -261,7 +261,7 @@ window.inviaVerifica = async function() {
 
         // 2. Carica su Supabase Storage
         const { data: upData, error: upErr } = await supabaseClient.storage
-            .from('ai_verificheiche') // Assicurati che questo bucket esista
+            .from('ai_verifiche') // Assicurati che questo bucket esista
             .upload(nomeFile, pdfBlob);
         
         if (upErr) throw upErr;
