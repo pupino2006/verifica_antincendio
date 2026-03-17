@@ -257,17 +257,25 @@ window.inviaVerifica = async function() {
     try {
         // 1. Genera PDF
         const pdfBlob = await generaPDF();
-        const nomeFile = `verifica_${Date.now()}_${op1.replace(/\s/g, '_')}.pdf`;
+        // Creiamo un nome file pulito
+        const nomeFile = `report_${Date.now()}.pdf`;
 
         // 2. Carica su Supabase Storage
+        // NOTA: Ho cambiato 'ai_verificheiche' in 'verifiche-pdf'
         const { data: upData, error: upErr } = await supabaseClient.storage
-            .from('ai_verifiche') // Assicurati che questo bucket esista
-            .upload(nomeFile, pdfBlob);
+            .from('verifiche-pdf') 
+            .upload(nomeFile, pdfBlob, {
+                contentType: 'application/pdf',
+                upsert: true
+            });
         
-        if (upErr) throw upErr;
+        if (upErr) {
+            console.error("Errore Upload:", upErr);
+            throw new Error(`Errore Storage: ${upErr.message}. Verifica che il bucket 'verifiche-pdf' esista su Supabase!`);
+        }
 
         // 3. Ottieni URL Pubblico
-        const { data: urlData } = supabaseClient.storage.from('ai_verificheiche').getPublicUrl(nomeFile);
+        const { data: urlData } = supabaseClient.storage.from('verifiche-pdf').getPublicUrl(nomeFile);
         const publicUrl = urlData.publicUrl;
 
         // 4. Salva il record nel Database
@@ -283,25 +291,23 @@ window.inviaVerifica = async function() {
         // 5. Preparazione Email
         const subject = encodeURIComponent(`REPORT ANTINCENDIO: ${op1}`);
         const body = encodeURIComponent(`Buongiorno,\nè stato completato un nuovo report di verifica.\n\nOperatore: ${op1}\nLink al PDF: ${publicUrl}\n\nCordiali saluti.`);
-        const mailTo = "geom.rip@gmail.com";
         
-        alert("✅ Verifica salvata con successo nel database!");
+        alert("✅ Verifica salvata e caricata correttamente!");
         
         // Apre il client mail
-        window.location.href = `mailto:${mailTo}?subject=${subject}&body=${body}`;
+        window.location.href = `mailto:geom.rip@gmail.com?subject=${subject}&body=${body}`;
 
-        // Reset e ritorno alla home
-        setTimeout(() => { window.tornaAllaHome(); location.reload(); }, 1000);
+        // Reset
+        setTimeout(() => { location.reload(); }, 2000);
 
     } catch (err) {
         console.error(err);
-        alert("Errore durante il salvataggio: " + err.message);
+        alert(err.message);
     } finally {
         btn.disabled = false;
         btn.innerText = "🚀 SALVA E INVIA A GEOM. RIPA";
     }
 };
-
 // --- STORICO ---
 
 window.caricaStorico = async function() {
