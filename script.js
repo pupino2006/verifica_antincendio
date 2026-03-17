@@ -290,9 +290,9 @@ window.inviaVerifica = async function() {
         const nomeFile = `report_${Date.now()}.pdf`;
 
         // 2. Carica su Supabase Storage
-        // NOTA: Ho cambiato 'ai_verifiche' in 'verifiche-pdf'
+        // NOTA: Ho cambiato 'ai_verifiche' in 'ai_verifiche'
         const { data: upData, error: upErr } = await supabaseClient.storage
-            .from('verifiche-pdf') 
+            .from('ai_verifiche') 
             .upload(nomeFile, pdfBlob, {
                 contentType: 'application/pdf',
                 upsert: true
@@ -300,11 +300,11 @@ window.inviaVerifica = async function() {
         
         if (upErr) {
             console.error("Errore Upload:", upErr);
-            throw new Error(`Errore Storage: ${upErr.message}. Verifica che il bucket 'verifiche-pdf' esista su Supabase!`);
+            throw new Error(`Errore Storage: ${upErr.message}. Verifica che il bucket 'ai_verifiche' esista su Supabase!`);
         }
 
         // 3. Ottieni URL Pubblico
-        const { data: urlData } = supabaseClient.storage.from('verifiche-pdf').getPublicUrl(nomeFile);
+        const { data: urlData } = supabaseClient.storage.from('ai_verifiche').getPublicUrl(nomeFile);
         const publicUrl = urlData.publicUrl;
 
         // 4. Salva il record nel Database
