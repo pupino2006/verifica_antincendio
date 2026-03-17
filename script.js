@@ -197,34 +197,23 @@ window.inviaVerifica = async function() {
 
     btn.disabled = true;
     btn.innerText = "🚀 INVIO IN CORSO...";
-    
-    // Mostriamo il loader se esiste nell'HTML
-    const loader = document.getElementById('loading-overlay');
-    if (loader) loader.style.display = 'flex';
 
     try {
-        // 1. Creiamo il JSON delle risposte per la nuova colonna 'risposte'
+        // 1. Raccogliamo tutte le risposte in un unico oggetto JSON
         const risposteJSON = {};
         for (const [nomeSezione, domande] of Object.entries(sezioni)) {
             risposteJSON[nomeSezione] = domande.map((domanda, i) => {
                 const id = `${nomeSezione}_q${i}`;
-                const radioElement = document.querySelector(`input[name="${id}"]:checked`);
-                const risp = radioElement ? radioElement.value : "SI";
-                const notaElement = document.getElementById(`note_${id}`);
-                const nota = notaElement ? notaElement.value : "";
-                
-                return {
-                    domanda: domanda,
-                    risposta: risp,
-                    nota: nota
-                };
+                const risp = document.querySelector(`input[name="${id}"]:checked`)?.value || "SI";
+                const nota = document.getElementById(`note_${id}`).value;
+                return { domanda, risposta: risp, nota };
             });
         }
 
-        // 2. Trasformiamo il logo pt.png in Base64 (se presente nel DOM)
+        // 2. Prepariamo il Logo
         let logoBase64 = "";
-        const imgElement = document.getElementById('mainLogo'); 
-        if (imgElement && imgElement.complete && imgElement.naturalHeight !== 0) {
+        const imgElement = document.getElementById('pt'); // Assicurati che l'id sia corretto
+        if (imgElement) {
             const canvas = document.createElement("canvas");
             canvas.width = imgElement.naturalWidth;
             canvas.height = imgElement.naturalHeight;
@@ -233,16 +222,16 @@ window.inviaVerifica = async function() {
             logoBase64 = canvas.toDataURL("image/png");
         }
 
-        // 3. Prepariamo l'oggetto record per la nuova struttura del DB
+        // 3. Creiamo il record ESATTAMENTE per la nuova tabella
         const record = {
             operatore_1: op1,
             operatore_2: op2,
             data_ispezione: new Date(dataV).toISOString(),
-            risposte: risposteJSON,      // <--- USIAMO QUESTA, NON 'estintori'
+            risposte: risposteJSON,      // Questa è la colonna corretta ora
             foto: fotoChecklist,
-            logo_base64: logoBase64,
             firma_base64: sigPad1.toDataURL(),
             firma_2_base64: sigPad2 && !sigPad2.isEmpty() ? sigPad2.toDataURL() : null,
+            logo_base64: logoBase64,
             processato: false
         };
 
@@ -256,15 +245,12 @@ window.inviaVerifica = async function() {
         
         const nuovoRecord = dbData[0];
 
-        // 5. Chiamata alla Edge Function 'antincendio'
+        // 5. Chiamata alla Edge Function (usando il tuo nome: quick-processor)
         const { data: funcData, error: funcErr } = await supabaseClient.functions.invoke('quick-processor', {
             body: { record: nuovoRecord }
         });
 
-        if (funcErr) {
-            console.error("Dettaglio errore funzione:", funcErr);
-            throw new Error("La funzione ha risposto con errore. Controlla i Log su Supabase.");
-        }
+        if (funcErr) throw new Error("Errore Funzione: " + funcErr.message);
 
         alert("🚀 Rapporto salvato e inviato correttamente!");
         window.tornaAllaHome();
@@ -276,10 +262,8 @@ window.inviaVerifica = async function() {
     } finally {
         btn.disabled = false;
         btn.innerText = "🚀 SALVA E INVIA A GEOM. RIPA";
-        if (loader) loader.style.display = 'none';
     }
 };
-
 // --- STORICO ---
 
 window.caricaStorico = async function() {
