@@ -5,10 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Verifica Antincendio PT</title>
     
-<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="script.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <style>
         :root { 
@@ -29,7 +27,6 @@
             -webkit-tap-highlight-color: transparent;
         }
         
-        /* Header e Navigazione */
         .header-logo { 
             display: flex; 
             justify-content: center; 
@@ -81,7 +78,6 @@
             background: rgba(255,255,255,0.1); 
         }
 
-        /* Layout */
         .container { padding: 20px; max-width: 600px; margin: auto; }
         .input-group { margin-bottom: 20px; }
         .input-group label { display: block; font-weight: bold; margin-bottom: 8px; color: var(--primary); font-size: 0.85rem; }
@@ -110,7 +106,6 @@
             text-transform: uppercase;
         }
 
-        /* Firma */
         .signature-container { 
             border: 2px dashed #ccc; 
             background: #fff; 
@@ -124,7 +119,6 @@
             display: block; 
         }
 
-        /* Bottoni */
         .btn-main { 
             width: 100%; 
             padding: 18px; 
@@ -176,7 +170,6 @@
         .photo-preview { display: none; margin-top: 10px; border: 2px solid var(--success); border-radius: 8px; overflow: hidden; }
         .photo-preview img { width: 100%; display: block; }
 
-        /* Loader Overlay */
         #loading-overlay {
             display: none;
             position: fixed;
@@ -198,15 +191,15 @@
         <div id="loading-text">Generazione Report e Invio Mail...</div>
     </div>
 
-    <button id="btnHomeFisso" class="btn-home-fixed" onclick="tornaAllaHome()">🏠 HOME</button>
+    <button id="btnHomeFisso" class="btn-home-fixed" onclick="location.reload()">🏠 HOME</button>
 
     <div class="header-logo">
-        <img id="mainLogo" src="pt.png" style="display:none;">
+        <img src="pt.png" alt="Logo">
     </div>
 
     <div id="home-screen" class="container" style="text-align: center; padding-top: 50px;">
         <h2 style="color: var(--primary);">Controllo Periodico Antincendio</h2>
-        <p style="color: var(--secondary);">Gestione  PT S.r.l.</p>
+        <p style="color: var(--secondary);">Pannelli Termici S.r.l.</p>
         
         <div style="margin-top: 40px; display: flex; flex-direction: column; gap: 15px;">
             <button onclick="mostraApp()" class="btn-main">🆕 NUOVA VERIFICA</button>
@@ -216,46 +209,19 @@
 
     <div id="app-interface" style="display:none;">
         <nav class="tabs">
-            <button class="tab-btn" id="btn-tab-info" onclick="openTab(event, 'tab-info')">📋 INFO</button>
+            <button class="tab-btn active" id="btn-tab-info" onclick="openTab(event, 'tab-info')">📋 INFO</button>
             <button class="tab-btn" id="btn-tab-check" onclick="openTab(event, 'tab-check')">✅ CHECKLIST</button>
             <button class="tab-btn" id="btn-tab-invio" onclick="openTab(event, 'tab-invio')">✍️ FIRMA</button>
         </nav>
 
         <div id="tab-info" class="tab-content container">
             <div class="input-group">
-                <label>OPERATORE 1</label>
+                <label>OPERATORE</label>
                 <select id="operatore_1">
-                    <option value="">Seleziona...</option>
                     <option value="Francesco Marcone">Francesco Marcone</option>
                     <option value="Giuliano Di Carlo">Giuliano Di Carlo</option>
                     <option value="Sabatino Lalli">Sabatino Lalli</option>
-                    <option value="Giuseppe Marcone">Giuseppe Marcone</option>
-                    <option value="Petitta Andrea">Petitta Andrea</option>
                     <option value="Ripà Luca">Ripà Luca</option>
-                    <option value="Pannelli Gianluca">Pannelli Gianluca</option>
-                    <option value="D'Addazio Julio">D'Addazio Julio</option>  
-                    <option value="Fidanza Giacinto">Fidanza Giacinto</option> 
-                    <option value="Olivieri Matteo">Olivieri Matteo</option> 
-                    <option value="D'Amario Angelo">D'Amario Angelo</option>
-                    <option value="D'Amario Lorenzo">D'Amario Lorenzo</option> 
-                </select>
-            </div>
-            <div class="input-group">
-                <label>OPERATORE 2 (Collaboratore/Ospite)</label>
-                <select id="operatore_2">
-                    <option value="">Nessuno</option>
-                    <option value="Francesco Marcone">Francesco Marcone</option>
-                    <option value="Giuliano Di Carlo">Giuliano Di Carlo</option>
-                    <option value="Sabatino Lalli">Sabatino Lalli</option>
-                    <option value="Giuseppe Marcone">Giuseppe Marcone</option>
-                    <option value="Petitta Andrea">Petitta Andrea</option>
-                    <option value="Ripà Luca">Ripà Luca</option>
-                    <option value="Pannelli Gianluca">Pannelli Gianluca</option>
-                    <option value="D'Addazio Julio">D'Addazio Julio</option>  
-                    <option value="Fidanza Giacinto">Fidanza Giacinto</option> 
-                    <option value="Olivieri Matteo">Olivieri Matteo</option> 
-                    <option value="D'Amario Angelo">D'Amario Angelo</option>
-                    <option value="D'Amario Lorenzo">D'Amario Lorenzo</option> 
                 </select>
             </div>
             <div class="input-group">
@@ -271,341 +237,161 @@
         </div>
 
         <div id="tab-invio" class="tab-content container" style="display:none;">
-            <h3 style="color: var(--primary); margin-bottom: 5px;">Firma Operatore 1</h3>
+            <h3 style="color: var(--primary); margin-bottom: 5px;">Firma del Tecnico</h3>
             <div class="signature-container">
-                <canvas id="signature-pad-1" class="signature-pad-canvas"></canvas>
+                <canvas id="signature-pad" class="signature-pad-canvas"></canvas>
             </div>
-            <button class="btn-clear" onclick="cancellaFirma(1)">CANCELLA FIRMA 1</button>
-
-            <h3 style="color: var(--primary); margin-top: 30px; margin-bottom: 5px;">Firma Operatore 2</h3>
-            <div class="signature-container">
-                <canvas id="signature-pad-2" class="signature-pad-canvas"></canvas>
-            </div>
-            <button class="btn-clear" onclick="cancellaFirma(2)">CANCELLA FIRMA 2</button>
+            <button class="btn-clear" onclick="sigPad.clear()">CANCELLA FIRMA</button>
             
-            <button id="btnInvia" class="btn-main" style="background: var(--success); margin-top: 50px;" onclick="inviaVerifica()">🚀 SALVA E INVIA A GEOM. RIPA</button>
-            <p style="font-size: 11px; text-align: center; color: #888; margin-top: 15px;">Il PDF verrà inviato automaticamente a geom.rip@gmail.com</p>
+            <button id="btnInvia" class="btn-main" style="background: var(--success); margin-top: 50px;" onclick="inviaVerifica()">🚀 SALVA E GENERA PDF</button>
         </div>
     </div>
 
     <div id="tab-storico" class="container" style="display:none;">
-        <h3 style="color: var(--primary); text-align: center;">Ultime </h3>
-        <div id="lista-"></div>
-        <button onclick="tornaAllaHome()" class="btn-main" style="background: var(--secondary); margin-top: 20px;">TORNA ALLA HOME</button>
+        <h3 style="color: var(--primary); text-align: center;">Archivio Verifiche</h3>
+        <div id="lista-verifiche"></div>
+        <button onclick="location.reload()" class="btn-main" style="background: var(--secondary); margin-top: 20px;">TORNA ALLA HOME</button>
     </div>
 
     <script>
-// --- CONFIGURAZIONE SUPABASE ---
-const SB_URL = "https://vnzrewcbnoqbqvzckome.supabase.co";
-const SB_KEY = "sb_publishable_Sq9txbu-PmKdbxETSx2cjw_WqWEFBPO"; 
-const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+        const SB_URL = "https://vnzrewcbnoqbqvzckome.supabase.co";
+        const SB_KEY = "sb_publishable_Sq9txbu-PmKdbxETSx2cjw_WqWEFBPO"; 
+        const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
-// Variabili globali
-let sigPad1 = null;
-let sigPad2 = null;
-let fotoChecklist = {};
+        let sigPad = null;
+        let fotoData = {};
 
-const sezioni = {
-    "estintori": [
-        "Gli estintori sono segnalati da apposita cartellonistica?",
-        "Gli estintori sono prontamente individuabili e facilmente accessibili?",
-        "Si è potuta riscontrare l’ASSENZA di anomalie e/o fattori di pericolo sugli estintori?",
-        "L’ultimo controllo sugli estintori è stato effettuato non oltre sei mesi fa?"
-    ],
-    "idranti": [
-        "Gli idranti sono segnalati da apposita cartellonistica?",
-        "Gli idranti sono prontamente individuabili e facilmente accessibili?",
-        "Si è potuta riscontrare l’ASSENZA di anomalie e/o fattori di pericolo sugli idranti?",
-        "L’ultimo controllo sugli idranti è stato effettuato non oltre sei mesi fa?"
-    ],
-    "luci_di_emergenza": [
-        "Le luci di emergenza sono correttamente funzionanti?",
-        "Si è potuta riscontrare l’ASSENZA di anomalie sulle luci di emergenza?"
-    ],
-    "impianto_irai": [
-        "Rilevatori e pulsanti manuali sono accessibili?",
-        "Assenza di anomalie sui dispositivi dell’IRAI?"
-    ],
-    "porte_tagliafuoco": [
-        "Le porte tagliafuoco sono segnalate e prive di ostacoli?",
-        "Le prove di apertura/chiusura hanno confermato il corretto funzionamento?",
-        "Si è potuta riscontrare l’ASSENZA di anomalie sulle porte?",
-        "Controllo semestrale ditta specializzata regolare?"
-    ],
-    "vie_di_esodo": [
-        "Vie di esodo e uscite segnalate?",
-        "Percorsi privi di materiali ingombranti?",
-        "Vie di esodo adeguatamente illuminate?",
-        "Assenza di anomalie sulle via di esodo?"
-    ]
-};
-
-// --- NAVIGAZIONE ---
-window.mostraApp = function() {
-    document.getElementById('home-screen').style.display = 'none';
-    document.getElementById('app-interface').style.display = 'block';
-    document.getElementById('btnHomeFisso').style.display = 'block';
-    fotoChecklist = {}; 
-    renderChecklist();
-    openTab(null, 'tab-info');
-};
-
-window.tornaAllaHome = () => location.reload();
-
-window.openTab = function(evt, tabName) {
-    document.querySelectorAll(".tab-content").forEach(t => t.style.display = "none");
-    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-    
-    document.getElementById(tabName).style.display = "block";
-    if (evt) evt.currentTarget.classList.add("active");
-    
-    if (tabName === 'tab-invio') {
-        setTimeout(initSignatures, 300);
-    }
-};
-
-// --- LOGICA CHECKLIST ---
-function renderChecklist() {
-    const container = document.getElementById('checklist-container');
-    let html = '';
-    for (const [key, domande] of Object.entries(sezioni)) {
-        html += `<div class="sezione-titolo">${key.replace(/_/g, ' ').toUpperCase()}</div>`;
-        domande.forEach((domanda, i) => {
-            const id = `${key}_q${i}`;
-            html += `
-                <div class="card-verifica">
-                    <p class="domanda-testo">${domanda}</p>
-                    <div class="opzioni">
-                        <label><input type="radio" name="${id}" value="SI" checked> ✅ SI</label>
-                        <label><input type="radio" name="${id}" value="NO"> ❌ NO</label>
-                    </div>
-                    <textarea id="note_${id}" class="area-note" placeholder="Note o anomalie..."></textarea>
-                    <button class="btn-foto" onclick="document.getElementById('file_${id}').click()">📸 SCATTA FOTO</button>
-                    <input type="file" id="file_${id}" hidden accept="image/*" capture="environment" onchange="window.gestisciFoto(event, '${id}')">
-                    <div id="preview_${id}" class="photo-preview">
-                        <img id="img_${id}">
-                    </div>
-                </div>`;
-        });
-    }
-    container.innerHTML = html;
-}
-
-window.gestisciFoto = (e, id) => {
-    const file = e.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            fotoChecklist[id] = ev.target.result;
-            document.getElementById(`img_${id}`).src = ev.target.result;
-            document.getElementById(`preview_${id}`).style.display = "block";
+        const SEZIONI = {
+            "Estintori": ["Segnalati?", "Accessibili?", "Assenza anomalie?", "Controllo semestrale OK?"],
+            "Idranti": ["Segnalati?", "Accessibili?", "Assenza anomalie?"],
+            "Luci Emergenza": ["Funzionanti?", "Integrità visiva?"],
+            "Porte Tagliafuoco": ["Apertura libera?", "Chiudiporta funzionante?"]
         };
-        reader.readAsDataURL(file);
-    }
-};
 
-// --- GESTIONE FIRME ---
-function initSignatures() {
-    if (typeof SignaturePad === 'undefined') return;
-    const canvas1 = document.getElementById('signature-pad-1');
-    const canvas2 = document.getElementById('signature-pad-2');
-
-    if (canvas1 && !sigPad1) {
-        sigPad1 = new SignaturePad(canvas1, { backgroundColor: 'rgb(255, 255, 255)' });
-        resizeCanvas(canvas1);
-    }
-    if (canvas2 && !sigPad2) {
-        sigPad2 = new SignaturePad(canvas2, { backgroundColor: 'rgb(255, 255, 255)' });
-        resizeCanvas(canvas2);
-    }
-}
-
-function resizeCanvas(canvas) {
-    const ratio = Math.max(window.devicePixelRatio || 1, 1);
-    canvas.width = canvas.offsetWidth * ratio;
-    canvas.height = canvas.offsetHeight * ratio;
-    canvas.getContext("2d").scale(ratio, ratio);
-}
-
-window.cancellaFirma = (n) => (n === 1 ? sigPad1 : sigPad2)?.clear();
-
-// --- GENERAZIONE PDF ---
-async function generaPDF(op1, op2, dataV) {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
-    const logoImg = document.getElementById('pt');
-    if (logoImg && logoImg.complete) {
-        try {
-            // Aggiunge il logo (x, y, larghezza, altezza)
-            doc.addImage(logoImg, 'PNG', 15, 10, 40, 12);
-        } catch (e) {
-            console.error("Errore caricamento logo nel PDF:", e);
+        function mostraApp() {
+            document.getElementById('home-screen').style.display = 'none';
+            document.getElementById('app-interface').style.display = 'block';
+            document.getElementById('btnHomeFisso').style.display = 'block';
+            document.getElementById('dataVerifica').valueAsDate = new Date();
+            renderChecklist();
         }
-    }
-    
-    // Header
-    doc.setFillColor(0, 74, 153);
-    doc.rect(0, 0, 210, 40, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22);
-    doc.text("REPORT ANTINCENDIO", 105, 25, { align: "center" });
-    
-    doc.setTextColor(0);
-    doc.setFontSize(10);
-    doc.text(`Operatore 1: ${op1}`, 15, 50);
-    doc.text(`Operatore 2: ${op2 || 'Nessuno'}`, 15, 55);
-    doc.text(`Data: ${dataV}`, 15, 60);
-    
-    let y = 75;
-    
-    for (const [key, domande] of Object.entries(sezioni)) {
-        if (y > 250) { doc.addPage(); y = 20; }
-        doc.setFont("helvetica", "bold");
-        doc.text(key.toUpperCase().replace(/_/g, ' '), 15, y);
-        y += 7;
-        doc.setFont("helvetica", "normal");
-        
-        domande.forEach((domanda, i) => {
-            const id = `${key}_q${i}`;
-            const risp = document.querySelector(`input[name="${id}"]:checked`)?.value || "N.D.";
-            const nota = document.getElementById(`note_${id}`).value;
+
+        function openTab(evt, tabName) {
+            document.querySelectorAll(".tab-content").forEach(t => t.style.display = "none");
+            document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+            document.getElementById(tabName).style.display = "block";
+            if (evt) evt.currentTarget.classList.add("active");
+            if (tabName === 'tab-invio' && !sigPad) {
+                setTimeout(() => {
+                    const canvas = document.getElementById('signature-pad');
+                    sigPad = new SignaturePad(canvas);
+                    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+                    canvas.width = canvas.offsetWidth * ratio;
+                    canvas.height = canvas.offsetHeight * ratio;
+                    canvas.getContext("2d").scale(ratio, ratio);
+                }, 200);
+            }
+        }
+
+        function renderChecklist() {
+            const container = document.getElementById('checklist-container');
+            let html = '';
+            for (const [sez, domande] of Object.entries(SEZIONI)) {
+                html += `<div class="sezione-titolo">${sez}</div>`;
+                domande.forEach((d, i) => {
+                    const id = `${sez}_${i}`.replace(/\s+/g, '_');
+                    html += `
+                        <div class="card-verifica">
+                            <p class="domanda-testo">${d}</p>
+                            <div class="opzioni">
+                                <label><input type="radio" name="${id}" value="SI" checked> SI</label>
+                                <label><input type="radio" name="${id}" value="NO"> NO</label>
+                            </div>
+                            <textarea id="note_${id}" class="area-note" placeholder="Eventuali note..."></textarea>
+                            <button class="btn-foto" onclick="document.getElementById('file_${id}').click()">📸 FOTO</button>
+                            <input type="file" id="file_${id}" hidden accept="image/*" capture="environment" onchange="gestisciFoto(event, '${id}')">
+                            <div id="preview_${id}" class="photo-preview"><img id="img_${id}"></div>
+                        </div>`;
+                });
+            }
+            container.innerHTML = html;
+        }
+
+        function gestisciFoto(e, id) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    fotoData[id] = ev.target.result;
+                    document.getElementById(`img_${id}`).src = ev.target.result;
+                    document.getElementById(`preview_${id}`).style.display = "block";
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        async function inviaVerifica() {
+            const btn = document.getElementById('btnInvia');
+            const overlay = document.getElementById('loading-overlay');
             
-            doc.text(`${i+1}. ${domanda.substring(0, 80)}`, 15, y);
-            doc.setFont("helvetica", "bold");
-            doc.text(risp, 185, y);
-            doc.setFont("helvetica", "normal");
-            y += 6;
+            if (sigPad.isEmpty()) return alert("Manca la firma!");
             
-            if (nota) {
-                doc.setFontSize(8);
-                doc.setTextColor(100);
-                doc.text(`Nota: ${nota}`, 20, y);
-                y += 5;
-                doc.setFontSize(10);
-                doc.setTextColor(0);
+            btn.disabled = true;
+            overlay.style.display = 'flex';
+
+            const payload = {
+                operatore_1: document.getElementById('operatore_1').value,
+                data_ispezione: document.getElementById('dataVerifica').value,
+                risposte: {},
+                foto: fotoData,
+                firma_base64: sigPad.toDataURL()
+            };
+
+            for (const [sez, domande] of Object.entries(SEZIONI)) {
+                payload.risposte[sez] = domande.map((d, i) => {
+                    const id = `${sez}_${i}`.replace(/\s+/g, '_');
+                    return {
+                        q: d,
+                        r: document.querySelector(`input[name="${id}"]:checked`).value,
+                        n: document.getElementById(`note_${id}`).value
+                    };
+                });
             }
 
-            if (y > 275) { doc.addPage(); y = 20; }
-        });
-        y += 5;
-    }
+            try {
+                const { data, error } = await supabaseClient.from('verifiche_antincendio').insert([payload]).select();
+                if (error) throw error;
 
-    // Firme
-    if (y > 230) { doc.addPage(); y = 20; }
-    doc.text("Firma Operatore 1:", 15, y + 10);
-    doc.addImage(sigPad1.toDataURL(), 'PNG', 15, y + 15, 50, 25);
-    
-    if (sigPad2 && !sigPad2.isEmpty()) {
-        doc.text("Firma Operatore 2:", 110, y + 10);
-        doc.addImage(sigPad2.toDataURL(), 'PNG', 110, y + 15, 50, 25);
-    }
+                // Chiama la Edge Function
+                await supabaseClient.functions.invoke('antincendio-v2', { body: { record: data[0] } });
 
-    return doc.output('blob');
-}
+                alert("✅ Inviato con successo!");
+                location.reload();
+            } catch (err) {
+                alert("Errore: " + err.message);
+                btn.disabled = false;
+                overlay.style.display = 'none';
+            }
+        }
 
-// --- INVIO FINALE ---
-window.inviaVerifica = async function() {
-    const btn = document.getElementById('btnInvia');
-    const op1 = document.getElementById('operatore_1').value;
-    const op2 = document.getElementById('operatore_2').value;
-    const dataV = document.getElementById('dataVerifica').value;
-
-    if (!op1 || sigPad1.isEmpty()) {
-        alert("Attenzione: Operatore 1 e Firma 1 sono obbligatori!");
-        return;
-    }
-
-    btn.disabled = true;
-    btn.innerText = "🚀 INVIO IN CORSO...";
-
-    try {
-        // 1. Prepariamo l'oggetto con le risposte per la Edge Function
-        // Creiamo dei testi leggibili per le sezioni come si aspetta la funzione
-        const preparaDatiSezione = (nomeSezione) => {
-            let testo = "";
-            sezioni[nomeSezione].forEach((domanda, i) => {
-                const id = `${nomeSezione}_q${i}`;
-                const risp = document.querySelector(`input[name="${id}"]:checked`)?.value || "SI";
-                const nota = document.getElementById(`note_${id}`).value;
-                testo += `${domanda}: ${risp}${nota ? ' (Nota: ' + nota + ')' : ''}\n`;
-            });
-            return testo;
-        };
-
-        // 2. Costruiamo il record da inviare
-        const recordDaInviare = {
-            operatore_1: op1,
-            operatore_2: op2,
-            data_ispezione: dataV,
-            estintori: preparaDatiSezione('estintori'),
-            idranti: preparaDatiSezione('idranti'),
-            luci_emergenza: preparaDatiSezione('luci_di_emergenza'),
-            porte: preparaDatiSezione('porte_tagliafuoco'), // La funzione si aspetta 'porte'
-            firma_base64: sigPad1.toDataURL(), // Firma in base64
-            foto_checklist: fotoChecklist // Oggetto con tutte le foto base64 scattate
-        };
-
-        // 3. Salviamo prima nel Database per ottenere un ID (come vuole la funzione)
-        const { data: dbData, error: dbErr } = await supabaseClient
-            .from('verifiche_antincendio')
-            .insert([recordDaInviare])
-            .select();
-
-        if (dbErr) throw dbErr;
-        const nuovoRecord = dbData[0];
-
-        // 4. Chiamiamo la Edge Function 'antincendio'
-        // Passiamo il record appena creato. La funzione genererà il PDF e manderà la mail.
-        const { data: funcData, error: funcErr } = await supabaseClient.functions.invoke('antincendio', {
-            body: { record: nuovoRecord }
-        });
-
-        if (funcErr) throw funcErr;
-
-        alert("✅ Rapporto inviato con successo a Geom. Ripà!");
-        
-        // Ritorno alla home e reset
-        window.tornaAllaHome();
-        location.reload();
-
-    } catch (err) {
-        console.error("Errore completo:", err);
-        alert("❌ Errore durante l'invio: " + err.message);
-    } finally {
-        btn.disabled = false;
-        btn.innerText = "🚀 SALVA E INVIA A GEOM. RIPA";
-    }
-};
-window.caricaStorico = async () => {
-    document.getElementById('home-screen').style.display = 'none';
-    document.getElementById('tab-storico').style.display = 'block';
-    document.getElementById('btnHomeFisso').style.display = 'block';
-    const list = document.getElementById('lista-verifiche');
-    list.innerHTML = "Caricamento...";
-
-    const { data, error } = await supabaseClient
-        .from('verifiche_antincendio')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-    if (error) list.innerHTML = "Errore storico.";
-    else {
-        list.innerHTML = data.map(v => `
-            <div class="card-verifica" style="border-left-color: #666;">
-                <div style="display:flex; justify-content:space-between;">
-                    <strong>${v.operatore_1}</strong>
-                    <span>${new Date(v.data_ispezione).toLocaleDateString()}</span>
-                </div>
-                <a href="${v.pdf_url}" target="_blank" style="color:var(--primary); display:block; margin-top:10px;">Apri PDF 📄</a>
-            </div>
-        `).join('');
-    }
-};
-
-window.onload = () => {
-    document.getElementById('dataVerifica').valueAsDate = new Date();
-};
+        async function caricaStorico() {
+            document.getElementById('home-screen').style.display = 'none';
+            document.getElementById('tab-storico').style.display = 'block';
+            document.getElementById('btnHomeFisso').style.display = 'block';
+            
+            const { data, error } = await supabaseClient.from('verifiche_antincendio').select('*').order('created_at', {ascending: false});
+            const list = document.getElementById('lista-verifiche');
+            
+            if (error) list.innerHTML = "Errore caricamento.";
+            else {
+                list.innerHTML = data.map(v => `
+                    <div class="card-verifica">
+                        <strong>${v.operatore_1}</strong> - ${new Date(v.data_ispezione).toLocaleDateString()}<br>
+                        <a href="${v.pdf_url}" target="_blank" style="color:var(--primary);">📄 Vedi PDF</a>
+                    </div>
+                `).join('');
+            }
+        }
     </script>
 </body>
 </html>
