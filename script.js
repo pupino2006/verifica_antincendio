@@ -4,8 +4,7 @@ const SB_KEY = "sb_publishable_Sq9txbu-PmKdbxETSx2cjw_WqWEFBPO";
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
 // Variabili globali per firme e foto
-let sigPad1 = null;
-let sigPad2 = null;
+let sigPad = null;
 let fotoChecklist = {};
 
 // Definizione completa delle sezioni e domande
@@ -49,19 +48,11 @@ const sezioni = {
 window.mostraApp = function() {
     document.getElementById('home-screen').style.display = 'none';
     document.getElementById('app-interface').style.display = 'block';
-    document.getElementById('tab-storico').style.display = 'none';
     document.getElementById('btnHomeFisso').style.display = 'block';
     
-    fotoChecklist = {}; // Reset foto
+    fotoChecklist = {}; 
     window.renderChecklist();
     window.openTab(null, 'tab-info');
-};
-
-window.tornaAllaHome = function() {
-    document.getElementById('home-screen').style.display = 'block';
-    document.getElementById('app-interface').style.display = 'none';
-    document.getElementById('tab-storico').style.display = 'none';
-    document.getElementById('btnHomeFisso').style.display = 'none';
 };
 
 window.openTab = function(evt, tabName) {
@@ -71,20 +62,13 @@ window.openTab = function(evt, tabName) {
     const btns = document.getElementsByClassName("tab-btn");
     for (let i = 0; i < btns.length; i++) btns[i].classList.remove("active");
 
-    const targetTab = document.getElementById(tabName);
-    if (targetTab) targetTab.style.display = "block";
+    document.getElementById(tabName).style.display = "block";
 
-    // Inizializza le firme quando si arriva all'ultimo tab
     if (tabName === 'tab-invio') {
-        setTimeout(() => { window.initSignatures(); }, 200);
+        setTimeout(() => { window.initSignature(); }, 200);
     }
 
-    if (evt && evt.currentTarget) {
-        evt.currentTarget.classList.add("active");
-    } else {
-        const firstBtn = document.querySelector(`.tab-btn[onclick*="${tabName}"]`);
-        if (firstBtn) firstBtn.classList.add("active");
-    }
+    if (evt) evt.currentTarget.classList.add("active");
     window.scrollTo(0,0);
 };
 
@@ -92,8 +76,6 @@ window.openTab = function(evt, tabName) {
 
 window.renderChecklist = function() {
     const container = document.getElementById('checklist-container');
-    if (!container) return;
-    
     let html = '';
     for (const [key, domande] of Object.entries(sezioni)) {
         html += `<div class="sezione-titolo">${key.toUpperCase().replace(/_/g, ' ')}</div>`;
@@ -106,23 +88,17 @@ window.renderChecklist = function() {
                         <label><input type="radio" name="${id}" value="SI" checked> ✅ SI</label>
                         <label><input type="radio" name="${id}" value="NO"> ❌ NO</label>
                     </div>
-                    <div style="display:flex; gap:10px; margin-top:10px;">
-                        <textarea class="area-note" id="note_${id}" placeholder="Note o anomalie..."></textarea>
-                        <button type="button" class="btn-foto" onclick="window.scattaFoto('${id}')">📸</button>
-                    </div>
-                    <div id="preview_${id}" class="photo-preview" style="display:none; margin-top:10px;">
-                        <img id="img_${id}" src="" style="width:100px; border-radius:8px; border:1px solid #ddd;">
-                        <button type="button" onclick="window.rimuoviFoto('${id}')" style="color:red; background:none; border:none; font-size:12px; display:block;">Rimuovi</button>
+                    <textarea class="area-note" id="note_${id}" placeholder="Note o anomalie..."></textarea>
+                    <button type="button" class="btn-foto" onclick="window.scattaFoto('${id}')">📸 SCATTA FOTO</button>
+                    <div id="preview_${id}" class="photo-preview" style="display:none;">
+                        <img id="img_${id}" src="">
                     </div>
                     <input type="file" id="file_${id}" accept="image/*" capture="environment" style="display:none;" onchange="window.gestisciFoto(event, '${id}')">
-                </div>
-            `;
+                </div>`;
         });
     }
     container.innerHTML = html;
 };
-
-// --- GESTIONE FOTO ---
 
 window.scattaFoto = (id) => document.getElementById(`file_${id}`).click();
 
@@ -139,227 +115,79 @@ window.gestisciFoto = (e, id) => {
     }
 };
 
-window.rimuoviFoto = (id) => {
-    delete fotoChecklist[id];
-    document.getElementById(`preview_${id}`).style.display = "none";
-    document.getElementById(`file_${id}`).value = "";
-};
+// --- GESTIONE FIRMA ---
 
-// --- GESTIONE FIRME (DOPPIE) ---
-
-window.initSignatures = function() {
-    const canvas1 = document.getElementById('signature-pad-1');
-    const canvas2 = document.getElementById('signature-pad-2');
-    
-    if (canvas1 && !sigPad1) {
-        sigPad1 = new SignaturePad(canvas1, { backgroundColor: 'white' });
-        window.resizeCanvas(canvas1);
-    }
-    if (canvas2 && !sigPad2) {
-        sigPad2 = new SignaturePad(canvas2, { backgroundColor: 'white' });
-        window.resizeCanvas(canvas2);
+window.initSignature = function() {
+    const canvas = document.getElementById('signature-pad');
+    if (canvas && !sigPad) {
+        sigPad = new SignaturePad(canvas, { backgroundColor: 'white' });
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        canvas.width = canvas.offsetWidth * ratio;
+        canvas.height = canvas.offsetHeight * ratio;
+        canvas.getContext("2d").scale(ratio, ratio);
     }
 };
-
-window.resizeCanvas = function(canvas) {
-    const ratio = Math.max(window.devicePixelRatio || 1, 1);
-    canvas.width = canvas.offsetWidth * ratio;
-    canvas.height = canvas.offsetHeight * ratio;
-    canvas.getContext("2d").scale(ratio, ratio);
-};
-
-window.cancellaFirma = (n) => {
-    if (n === 1 && sigPad1) sigPad1.clear();
-    if (n === 2 && sigPad2) sigPad2.clear();
-};
-
-// --- GENERAZIONE PDF (Logica interna per jsPDF) ---
-async function generaPDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    const op1 = document.getElementById('operatore_1').value;
-    const op2 = document.getElementById('operatore_2').value || "Nessuno";
-    const dataV = document.getElementById('dataVerifica').value;
-
-    // --- TESTATA E LOGO ---
-    const logoImg = document.getElementById('pt');
-    if (logoImg) {
-        try {
-            // Inserisce il logo pt.png
-            doc.addImage(logoImg, 'PNG', 15, 10, 40, 12);
-        } catch (e) { console.error("Logo non disponibile per il PDF"); }
-    }
-
-    doc.setFontSize(18);
-    doc.setTextColor(0, 74, 153);
-    doc.text("REPORT VERIFICA ANTINCENDIO", 105, 20, { align: "center" });
-    
-    doc.setFontSize(10);
-    doc.setTextColor(0);
-    doc.text(`Data: ${dataV}`, 15, 30);
-    doc.text(`Operatore 1: ${op1} | Operatore 2: ${op2}`, 15, 35);
-    
-    let y = 45;
-
-    // --- CICLO SEZIONI E DOMANDE ---
-    for (const [sez, domande] of Object.entries(sezioni)) {
-        if (y > 250) { doc.addPage(); y = 20; }
-        
-        doc.setFont("helvetica", "bold");
-        doc.setFillColor(240, 240, 240);
-        doc.rect(15, y, 180, 7, 'F');
-        doc.text(sez.toUpperCase().replace(/_/g, ' '), 17, y + 5);
-        y += 12;
-        doc.setFont("helvetica", "normal");
-        
-        domande.forEach((d, i) => {
-            const id = `${sez}_q${i}`;
-            const risp = document.querySelector(`input[name="${id}"]:checked`)?.value || "N.D.";
-            const nota = document.getElementById(`note_${id}`).value;
-            
-            // Controllo spazio per domanda
-            if (y > 270) { doc.addPage(); y = 20; }
-
-            const testoDomanda = doc.splitTextToSize(`${i+1}. ${d}`, 160);
-            doc.text(testoDomanda, 15, y);
-            doc.setFont("helvetica", "bold");
-            doc.text(risp, 185, y);
-            doc.setFont("helvetica", "normal");
-            
-            y += (testoDomanda.length * 6);
-            
-            // Se c'è una nota, la scrive
-            if (nota) {
-                doc.setFontSize(8);
-                doc.setTextColor(100);
-                doc.text(`Nota: ${nota}`, 20, y);
-                y += 6;
-                doc.setFontSize(10);
-                doc.setTextColor(0);
-            }
-
-            // --- INSERIMENTO FOTO SOTTO LA DOMANDA ---
-            if (fotoChecklist[id]) {
-                // Se la foto non ci sta nella pagina, cambia pagina
-                if (y > 220) { doc.addPage(); y = 20; }
-                
-                try {
-                    // Inserisce la foto scattata per questa specifica domanda
-                    doc.addImage(fotoChecklist[id], 'JPEG', 20, y, 50, 35); 
-                    y += 40; // Spazio occupato dalla foto
-                } catch (e) {
-                    console.error("Errore inserimento foto id: " + id, e);
-                }
-            }
-            y += 4;
-        });
-        y += 5;
-    }
-
-    // --- FIRME FINALI ---
-    if (y > 230) { doc.addPage(); y = 20; }
-    doc.text("Firma Operatore 1:", 15, y + 10);
-    doc.addImage(sigPad1.toDataURL(), 'PNG', 15, y + 15, 45, 20);
-    
-    if (!sigPad2.isEmpty()) {
-        doc.text("Firma Operatore 2:", 110, y + 10);
-        doc.addImage(sigPad2.toDataURL(), 'PNG', 110, y + 15, 45, 20);
-    }
-
-    return doc.output('blob');
-}
 
 // --- INVIO FINALE ---
 
 window.inviaVerifica = async function() {
     const btn = document.getElementById('btnInvia');
+    const overlay = document.getElementById('loading-overlay');
     const op1 = document.getElementById('operatore_1').value;
-    const op2 = document.getElementById('operatore_2').value;
     const dataV = document.getElementById('dataVerifica').value;
 
-    if (!op1 || sigPad1.isEmpty()) {
-        alert("Attenzione: Operatore 1 e Firma sono obbligatori!");
-        return;
-    }
+    if (sigPad.isEmpty()) return alert("La firma è obbligatoria!");
 
     btn.disabled = true;
-    btn.innerText = "🚀 INVIO IN CORSO...";
+    overlay.style.display = 'flex';
 
     try {
-        // 1. Funzione per raggruppare le risposte in testo leggibile
-        const preparaDatiSezione = (nomeSezione) => {
-            let testo = "";
-            if (!sezioni[nomeSezione]) return "Nessun dato";
-            sezioni[nomeSezione].forEach((domanda, i) => {
-                const id = `${nomeSezione}_q${i}`;
-                const risp = document.querySelector(`input[name="${id}"]:checked`)?.value || "SI";
-                const nota = document.getElementById(`note_${id}`).value;
-                testo += `- ${domanda}: ${risp}${nota ? ' [NOTA: ' + nota + ']' : ''}\n`;
+        // Prepariamo l'oggetto risposte (JSON)
+        const risposteJSON = {};
+        for (const [key, domande] of Object.entries(sezioni)) {
+            risposteJSON[key] = domande.map((d, i) => {
+                const id = `${key}_q${i}`;
+                return {
+                    domanda: d,
+                    risposta: document.querySelector(`input[name="${id}"]:checked`).value,
+                    nota: document.getElementById(`note_${id}`).value
+                };
             });
-            return testo;
-        };
-
-        // 2. Trasformiamo il logo pt.png in Base64 (se presente nel DOM)
-        let logoBase64 = "";
-        const imgElement = document.getElementById('mainLogo'); 
-        if (imgElement) {
-            const canvas = document.createElement("canvas");
-            canvas.width = imgElement.naturalWidth;
-            canvas.height = imgElement.naturalHeight;
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(imgElement, 0, 0);
-            logoBase64 = canvas.toDataURL("image/png");
         }
 
-        // 3. Prepariamo l'oggetto record ESATTAMENTE come le colonne del DB
         const record = {
             operatore_1: op1,
-            operatore_2: op2,
-            data_ispezione: new Date(dataV).toISOString(), // Formato corretto per il DB
-            estintori: preparaDatiSezione('estintori'),
-            idranti: preparaDatiSezione('idranti'),
-            luci_emergenza: preparaDatiSezione('luci_di_emergenza'),
-            porte: preparaDatiSezione('porte_tagliafuoco'),
-            firma_base64: sigPad1.toDataURL(),
-            foto_checklist: fotoChecklist, // Oggetto JSON con le foto
-            logo_base64: logoBase64,
+            data_ispezione: dataV,
+            risposte: risposteJSON,
+            foto: fotoChecklist,
+            firma_base64: sigPad.toDataURL(),
             processato: false
         };
 
-        // 4. Salvataggio nel database
-        const { data: dbData, error: dbErr } = await supabaseClient
+        // 1. Salvataggio nel database
+        const { data, error } = await supabaseClient
             .from('verifiche_antincendio')
             .insert([record])
             .select();
 
-        if (dbErr) throw new Error("Errore DB: " + dbErr.message);
-        
-        const nuovoRecord = dbData[0];
+        if (error) throw error;
 
-        // 5. Chiamata alla Edge Function 'antincendio'
-        const { data: funcData, error: funcErr } = await supabaseClient.functions.invoke('antincendio', {
-            body: { record: nuovoRecord }
+        // 2. Chiamata alla Edge Function (Genera PDF e invia Email)
+        await supabaseClient.functions.invoke('antincendio', {
+            body: { record: data[0] }
         });
 
-        if (funcErr) {
-            // Se la funzione fallisce ma il record è salvato, avvisiamo
-            console.error("Dettaglio errore funzione:", funcErr);
-            throw new Error("La funzione ha risposto con errore. Controlla i Log su Supabase.");
-        }
-
-        alert("🚀 Rapporto salvato e inviato correttamente!");
-        window.tornaAllaHome();
-        setTimeout(() => { location.reload(); }, 500);
+        alert("🚀 Rapporto inviato con successo a Geom. Ripà!");
+        location.reload();
 
     } catch (err) {
         console.error(err);
         alert("❌ Errore: " + err.message);
     } finally {
         btn.disabled = false;
-        btn.innerText = "🚀 SALVA E INVIA A GEOM. RIPA";
+        overlay.style.display = 'none';
     }
 };
-// --- STORICO ---
 
 window.caricaStorico = async function() {
     document.getElementById('home-screen').style.display = 'none';
@@ -367,41 +195,21 @@ window.caricaStorico = async function() {
     document.getElementById('btnHomeFisso').style.display = 'block';
     
     const container = document.getElementById('lista-verifiche');
-    container.innerHTML = "<p style='text-align:center;'>Caricamento in corso...</p>";
+    container.innerHTML = "Caricamento...";
     
-    try {
-        const { data, error } = await supabaseClient
-            .from('verifiche_antincendio')
-            .select('*')
-            .order('created_at', { ascending: false });
+    const { data, error } = await supabaseClient
+        .from('verifiche_antincendio')
+        .select('*')
+        .order('created_at', { ascending: false });
             
-        if (error) throw error;
-        
-        if (data.length === 0) {
-            container.innerHTML = "<p style='text-align:center;'>Nessuna verifica trovata.</p>";
-            return;
-        }
-
+    if (error) {
+        container.innerHTML = "Errore.";
+    } else {
         container.innerHTML = data.map(v => `
-            <div class="card-verifica" style="border-left: 5px solid #004a99; margin-bottom:10px;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <strong>${v.operatore_1}</strong>
-                    <span style="font-size:0.8rem; color:#666;">${new Date(v.data_ispezione).toLocaleDateString()}</span>
-                </div>
-                <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-size:0.7rem; color:#999;">ID: ${v.id}</span>
-                    <a href="${v.pdf_url}" target="_blank" style="background:#004a99; color:white; padding:5px 10px; border-radius:5px; text-decoration:none; font-size:0.8rem;">VEDI PDF 📄</a>
-                </div>
+            <div class="card-verifica" style="border-left: 5px solid #004a99;">
+                <strong>${v.operatore_1}</strong> - ${new Date(v.data_ispezione).toLocaleDateString()}<br>
+                <a href="${v.pdf_url}" target="_blank" style="color:#004a99; font-weight:bold;">VEDI PDF 📄</a>
             </div>
         `).join('');
-    } catch (e) { 
-        container.innerHTML = "<p style='color:red;'>Errore nel caricamento dello storico.</p>"; 
     }
 };
-
-// Imposta data odierna all'avvio
-window.addEventListener('load', () => {
-    if (document.getElementById('dataVerifica')) {
-        document.getElementById('dataVerifica').valueAsDate = new Date();
-    }
-});
