@@ -238,8 +238,8 @@ window.inviaVerifica = async function() {
             operatore_1: op1,
             operatore_2: op2,
             data_ispezione: new Date(dataV).toISOString(),
-            risposte: risposteJSON,      // Sostituisce le vecchie colonne singole
-            foto: fotoChecklist,         // Invia l'oggetto JSON con le foto in base64
+            risposte: risposteJSON,      // <--- USIAMO QUESTA, NON 'estintori'
+            foto: fotoChecklist,
             logo_base64: logoBase64,
             firma_base64: sigPad1.toDataURL(),
             firma_2_base64: sigPad2 && !sigPad2.isEmpty() ? sigPad2.toDataURL() : null,
@@ -258,7 +258,7 @@ window.inviaVerifica = async function() {
 
         // 5. Chiamata alla Edge Function 'antincendio'
         const { data: funcData, error: funcErr } = await supabaseClient.functions.invoke('quick-processor', {
-        body: { record: nuovoRecord }
+            body: { record: nuovoRecord }
         });
 
         if (funcErr) {
