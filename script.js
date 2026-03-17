@@ -161,71 +161,58 @@ window.resizeCanvas = function() {
 
 window.cancellaFirma = () => signaturePad && signaturePad.clear();
 
-// --- INVIO ---
-
+// --- SALVATAGGIO E INVIO ---
 window.inviaVerifica = async function() {
     const btn = document.getElementById('btnInvia');
     const op1 = document.getElementById('operatore_1').value;
 
-    if (!op1 || !signaturePad || signaturePad.isEmpty()) {
-        alert("Operatore e firma sono obbligatori!");
+    if (!op1 || signaturePad.isEmpty()) {
+        alert("Inserire Operatore e Firma!");
         return;
     }
 
     btn.disabled = true;
-    btn.innerText = "Invio in corso...";
+    btn.innerText = "Generazione PDF...";
 
     try {
-        const payload = {
+        // 1. Genera PDF Blob
+        const pdfBlob = await generaPDF();
+        const nomeFile = `verifica_${Date.now()}.pdf`;
+
+        // 2. Carica su Storage
+        const { data: upData, error: upErr } = await supabaseClient.storage
+            .from('pdf_verifiche') // Assicurati che il bucket esista ed è PUBBLICO
+            .upload(nomeFile, pdfBlob);
+        
+        if (upErr) throw upErr;
+
+        const { data: urlData } = supabaseClient.storage.from('pdf_verifiche').getPublicUrl(nomeFile);
+        const publicUrl = urlData.publicUrl;
+
+        // 3. Salva su Database
+        await supabaseClient.from('verifiche_antincendio').insert([{
             operatore_1: op1,
-            operatore_2: document.getElementById('operatore_2').value,
-            data_verifica: document.getElementById('dataVerifica').value,
-            estintori: raccogliRisposte('estintori'),
-            idranti: raccogliRisposte('idranti'),
-            luci_emergenza: raccogliRisposte('luci_di_emergenza'),
-            porte: raccogliRisposte('porte_tagliafuoco'),
-            uscite: raccogliRisposte('vie_di_esodo'),
-            processato: false
-        };
+            data_ispezione: new Date(),
+            pdf_url: publicUrl
+        }]);
 
-        const { data, error } = await supabaseClient
-            .from('verifiche_antincendio')
-            .insert([payload])
-            .select();
+        // 4. INVIO MAIL (Stessa logica Rapportini)
+        const subject = encodeURIComponent(`Verifica Antincendio - ${op1}`);
+        const body = encodeURIComponent(`Buongiorno,\nin allegato il link al report della verifica antincendio:\n\n${publicUrl}\n\nCordiali saluti.`);
+        const mailTo = "sicurezza@pannellitermici.it"; // La tua mail aziendale
+        
+        alert("✅ Dati salvati! Ora si aprirà la tua mail per l'invio del link.");
+        
+        window.location.href = `mailto:${mailTo}?subject=${subject}&body=${body}`;
 
-        if (error) throw error;
-
-        // Invio alla Edge Function con Firma e Foto
-        fetch(EDGE_FUNCTION_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                record: {
-                    ...data[0],
-                    firma_base64: signaturePad.toDataURL(),
-                    foto_checklist: fotoChecklist
-                }
-            })
-        });
-
-        alert("✅ Salvato con successo!");
         window.tornaAllaHome();
+
     } catch (err) {
         alert("Errore: " + err.message);
     } finally {
         btn.disabled = false;
         btn.innerText = "🚀 SALVA E GENERA PDF";
     }
-};
-
-function raccogliRisposte(sez) {
-    let t = "";
-    sezioni[sez].forEach((d, i) => {
-        const v = document.querySelector(`input[name="${sez}_q${i}"]:checked`)?.value || "N.D.";
-        const n = document.getElementById(`note_${sez}_q${i}`).value;
-        t += `D: ${d}\nR: ${v}${n ? ' - Nota: ' + n : ''}\n\n`;
-    });
-    return t;
 }
 
 window.caricaStorico = async function() {
