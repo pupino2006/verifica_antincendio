@@ -201,7 +201,7 @@
     <button id="btnHomeFisso" class="btn-home-fixed" onclick="tornaAllaHome()">🏠 HOME</button>
 
     <div class="header-logo">
-        <img id="mainLogo" src="pt.png" alt="Logo PT" onerror="this.src='https://via.placeholder.com/200x50?text=Pannelli+Termici'">
+        <img id="pt" src="pt.png" alt="Logo PT" onerror="this.src='https://via.placeholder.com/200x50?text=Pannelli+Termici'">
     </div>
 
     <div id="home-screen" class="container" style="text-align: center; padding-top: 50px;">
@@ -434,7 +434,7 @@ async function generaPDF(op1, op2, dataV) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    const logoImg = document.getElementById('mainLogo');
+    const logoImg = document.getElementById('pt');
     if (logoImg && logoImg.complete) {
         try {
             // Aggiunge il logo (x, y, larghezza, altezza)
