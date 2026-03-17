@@ -290,7 +290,7 @@ window.inviaVerifica = async function() {
         const nomeFile = `report_${Date.now()}.pdf`;
 
         // 2. Carica su Supabase Storage
-        // NOTA: Ho cambiato 'ai_verificheiche' in 'verifiche-pdf'
+        // NOTA: Ho cambiato 'ai_verifiche' in 'verifiche-pdf'
         const { data: upData, error: upErr } = await supabaseClient.storage
             .from('verifiche-pdf') 
             .upload(nomeFile, pdfBlob, {
