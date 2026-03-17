@@ -174,7 +174,6 @@ window.cancellaFirma = (n) => {
 };
 
 // --- GENERAZIONE PDF (Logica interna per jsPDF) ---
-
 async function generaPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
@@ -182,7 +181,15 @@ async function generaPDF() {
     const op2 = document.getElementById('operatore_2').value || "Nessuno";
     const dataV = document.getElementById('dataVerifica').value;
 
-    // Intestazione
+    // --- TESTATA E LOGO ---
+    const logoImg = document.getElementById('mainLogo');
+    if (logoImg) {
+        try {
+            // Inserisce il logo pt.png
+            doc.addImage(logoImg, 'PNG', 15, 10, 40, 12);
+        } catch (e) { console.error("Logo non disponibile per il PDF"); }
+    }
+
     doc.setFontSize(18);
     doc.setTextColor(0, 74, 153);
     doc.text("REPORT VERIFICA ANTINCENDIO", 105, 20, { align: "center" });
@@ -190,17 +197,19 @@ async function generaPDF() {
     doc.setFontSize(10);
     doc.setTextColor(0);
     doc.text(`Data: ${dataV}`, 15, 30);
-    doc.text(`Operatore 1: ${op1}`, 15, 35);
-    doc.text(`Operatore 2: ${op2}`, 15, 40);
+    doc.text(`Operatore 1: ${op1} | Operatore 2: ${op2}`, 15, 35);
     
-    let y = 50;
+    let y = 45;
 
-    // Ciclo su risposte
+    // --- CICLO SEZIONI E DOMANDE ---
     for (const [sez, domande] of Object.entries(sezioni)) {
-        if (y > 270) { doc.addPage(); y = 20; }
+        if (y > 250) { doc.addPage(); y = 20; }
+        
         doc.setFont("helvetica", "bold");
-        doc.text(sez.toUpperCase().replace(/_/g, ' '), 15, y);
-        y += 7;
+        doc.setFillColor(240, 240, 240);
+        doc.rect(15, y, 180, 7, 'F');
+        doc.text(sez.toUpperCase().replace(/_/g, ' '), 17, y + 5);
+        y += 12;
         doc.setFont("helvetica", "normal");
         
         domande.forEach((d, i) => {
@@ -208,33 +217,53 @@ async function generaPDF() {
             const risp = document.querySelector(`input[name="${id}"]:checked`)?.value || "N.D.";
             const nota = document.getElementById(`note_${id}`).value;
             
+            // Controllo spazio per domanda
+            if (y > 270) { doc.addPage(); y = 20; }
+
             const testoDomanda = doc.splitTextToSize(`${i+1}. ${d}`, 160);
             doc.text(testoDomanda, 15, y);
-            doc.text(risp, 180, y);
-            y += (testoDomanda.length * 5);
+            doc.setFont("helvetica", "bold");
+            doc.text(risp, 185, y);
+            doc.setFont("helvetica", "normal");
             
+            y += (testoDomanda.length * 6);
+            
+            // Se c'è una nota, la scrive
             if (nota) {
                 doc.setFontSize(8);
                 doc.setTextColor(100);
                 doc.text(`Nota: ${nota}`, 20, y);
-                y += 5;
+                y += 6;
                 doc.setFontSize(10);
                 doc.setTextColor(0);
             }
-            y += 2;
-            if (y > 275) { doc.addPage(); y = 20; }
+
+            // --- INSERIMENTO FOTO SOTTO LA DOMANDA ---
+            if (fotoChecklist[id]) {
+                // Se la foto non ci sta nella pagina, cambia pagina
+                if (y > 220) { doc.addPage(); y = 20; }
+                
+                try {
+                    // Inserisce la foto scattata per questa specifica domanda
+                    doc.addImage(fotoChecklist[id], 'JPEG', 20, y, 50, 35); 
+                    y += 40; // Spazio occupato dalla foto
+                } catch (e) {
+                    console.error("Errore inserimento foto id: " + id, e);
+                }
+            }
+            y += 4;
         });
         y += 5;
     }
 
-    // Firme
+    // --- FIRME FINALI ---
     if (y > 230) { doc.addPage(); y = 20; }
     doc.text("Firma Operatore 1:", 15, y + 10);
-    doc.addImage(sigPad1.toDataURL(), 'PNG', 15, y + 15, 50, 25);
+    doc.addImage(sigPad1.toDataURL(), 'PNG', 15, y + 15, 45, 20);
     
     if (!sigPad2.isEmpty()) {
         doc.text("Firma Operatore 2:", 110, y + 10);
-        doc.addImage(sigPad2.toDataURL(), 'PNG', 110, y + 15, 50, 25);
+        doc.addImage(sigPad2.toDataURL(), 'PNG', 110, y + 15, 45, 20);
     }
 
     return doc.output('blob');
