@@ -181,12 +181,12 @@ window.inviaVerifica = async function() {
 
         // 2. Carica su Storage
         const { data: upData, error: upErr } = await supabaseClient.storage
-            .from('pdf_verifiche') // Assicurati che il bucket esista ed è PUBBLICO
+            .from('ai_verificheiche') // Assicurati che il bucket esista ed è PUBBLICO
             .upload(nomeFile, pdfBlob);
         
         if (upErr) throw upErr;
 
-        const { data: urlData } = supabaseClient.storage.from('pdf_verifiche').getPublicUrl(nomeFile);
+        const { data: urlData } = supabaseClient.storage.from('ai_verificheiche').getPublicUrl(nomeFile);
         const publicUrl = urlData.publicUrl;
 
         // 3. Salva su Database
