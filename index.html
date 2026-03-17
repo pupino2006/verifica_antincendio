@@ -433,6 +433,16 @@ window.cancellaFirma = (n) => (n === 1 ? sigPad1 : sigPad2)?.clear();
 async function generaPDF(op1, op2, dataV) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
+
+    const logoImg = document.getElementById('mainLogo');
+    if (logoImg && logoImg.complete) {
+        try {
+            // Aggiunge il logo (x, y, larghezza, altezza)
+            doc.addImage(logoImg, 'PNG', 15, 10, 40, 12);
+        } catch (e) {
+            console.error("Errore caricamento logo nel PDF:", e);
+        }
+    }
     
     // Header
     doc.setFillColor(0, 74, 153);
