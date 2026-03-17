@@ -257,8 +257,8 @@ window.inviaVerifica = async function() {
         const nuovoRecord = dbData[0];
 
         // 5. Chiamata alla Edge Function 'antincendio'
-        const { data: funcData, error: funcErr } = await supabaseClient.functions.invoke('antincendio', {
-            body: { record: nuovoRecord }
+        const { data: funcData, error: funcErr } = await supabaseClient.functions.invoke('quick-processor', {
+        body: { record: nuovoRecord }
         });
 
         if (funcErr) {
