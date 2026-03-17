@@ -4,7 +4,8 @@ const SB_KEY = "sb_publishable_Sq9txbu-PmKdbxETSx2cjw_WqWEFBPO";
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
 // Variabili globali per firme e foto
-let sigPad = null;
+let sigPad1 = null;
+let sigPad2 = null;
 let fotoChecklist = {};
 
 // Definizione completa delle sezioni e domande
@@ -48,11 +49,19 @@ const sezioni = {
 window.mostraApp = function() {
     document.getElementById('home-screen').style.display = 'none';
     document.getElementById('app-interface').style.display = 'block';
+    document.getElementById('tab-storico').style.display = 'none';
     document.getElementById('btnHomeFisso').style.display = 'block';
     
-    fotoChecklist = {}; 
+    fotoChecklist = {}; // Reset foto
     window.renderChecklist();
     window.openTab(null, 'tab-info');
+};
+
+window.tornaAllaHome = function() {
+    document.getElementById('home-screen').style.display = 'block';
+    document.getElementById('app-interface').style.display = 'none';
+    document.getElementById('tab-storico').style.display = 'none';
+    document.getElementById('btnHomeFisso').style.display = 'none';
 };
 
 window.openTab = function(evt, tabName) {
@@ -62,13 +71,20 @@ window.openTab = function(evt, tabName) {
     const btns = document.getElementsByClassName("tab-btn");
     for (let i = 0; i < btns.length; i++) btns[i].classList.remove("active");
 
-    document.getElementById(tabName).style.display = "block";
+    const targetTab = document.getElementById(tabName);
+    if (targetTab) targetTab.style.display = "block";
 
+    // Inizializza le firme quando si arriva all'ultimo tab
     if (tabName === 'tab-invio') {
-        setTimeout(() => { window.initSignature(); }, 200);
+        setTimeout(() => { window.initSignatures(); }, 200);
     }
 
-    if (evt) evt.currentTarget.classList.add("active");
+    if (evt && evt.currentTarget) {
+        evt.currentTarget.classList.add("active");
+    } else {
+        const firstBtn = document.querySelector(`.tab-btn[onclick*="${tabName}"]`);
+        if (firstBtn) firstBtn.classList.add("active");
+    }
     window.scrollTo(0,0);
 };
 
@@ -76,6 +92,8 @@ window.openTab = function(evt, tabName) {
 
 window.renderChecklist = function() {
     const container = document.getElementById('checklist-container');
+    if (!container) return;
+    
     let html = '';
     for (const [key, domande] of Object.entries(sezioni)) {
         html += `<div class="sezione-titolo">${key.toUpperCase().replace(/_/g, ' ')}</div>`;
@@ -88,17 +106,23 @@ window.renderChecklist = function() {
                         <label><input type="radio" name="${id}" value="SI" checked> ✅ SI</label>
                         <label><input type="radio" name="${id}" value="NO"> ❌ NO</label>
                     </div>
-                    <textarea class="area-note" id="note_${id}" placeholder="Note o anomalie..."></textarea>
-                    <button type="button" class="btn-foto" onclick="window.scattaFoto('${id}')">📸 SCATTA FOTO</button>
-                    <div id="preview_${id}" class="photo-preview" style="display:none;">
-                        <img id="img_${id}" src="">
+                    <div style="display:flex; gap:10px; margin-top:10px;">
+                        <textarea class="area-note" id="note_${id}" placeholder="Note o anomalie..."></textarea>
+                        <button type="button" class="btn-foto" onclick="window.scattaFoto('${id}')">📸</button>
+                    </div>
+                    <div id="preview_${id}" class="photo-preview" style="display:none; margin-top:10px;">
+                        <img id="img_${id}" src="" style="width:100px; border-radius:8px; border:1px solid #ddd;">
+                        <button type="button" onclick="window.rimuoviFoto('${id}')" style="color:red; background:none; border:none; font-size:12px; display:block;">Rimuovi</button>
                     </div>
                     <input type="file" id="file_${id}" accept="image/*" capture="environment" style="display:none;" onchange="window.gestisciFoto(event, '${id}')">
-                </div>`;
+                </div>
+            `;
         });
     }
     container.innerHTML = html;
 };
+
+// --- GESTIONE FOTO ---
 
 window.scattaFoto = (id) => document.getElementById(`file_${id}`).click();
 
@@ -115,79 +139,148 @@ window.gestisciFoto = (e, id) => {
     }
 };
 
-// --- GESTIONE FIRMA ---
+window.rimuoviFoto = (id) => {
+    delete fotoChecklist[id];
+    document.getElementById(`preview_${id}`).style.display = "none";
+    document.getElementById(`file_${id}`).value = "";
+};
 
-window.initSignature = function() {
-    const canvas = document.getElementById('signature-pad');
-    if (canvas && !sigPad) {
-        sigPad = new SignaturePad(canvas, { backgroundColor: 'white' });
-        const ratio = Math.max(window.devicePixelRatio || 1, 1);
-        canvas.width = canvas.offsetWidth * ratio;
-        canvas.height = canvas.offsetHeight * ratio;
-        canvas.getContext("2d").scale(ratio, ratio);
+// --- GESTIONE FIRME (DOPPIE) ---
+
+window.initSignatures = function() {
+    const canvas1 = document.getElementById('signature-pad-1');
+    const canvas2 = document.getElementById('signature-pad-2');
+    
+    if (canvas1 && !sigPad1) {
+        sigPad1 = new SignaturePad(canvas1, { backgroundColor: 'white' });
+        window.resizeCanvas(canvas1);
+    }
+    if (canvas2 && !sigPad2) {
+        sigPad2 = new SignaturePad(canvas2, { backgroundColor: 'white' });
+        window.resizeCanvas(canvas2);
     }
 };
 
-// --- INVIO FINALE ---
+window.resizeCanvas = function(canvas) {
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    canvas.width = canvas.offsetWidth * ratio;
+    canvas.height = canvas.offsetHeight * ratio;
+    canvas.getContext("2d").scale(ratio, ratio);
+};
+
+window.cancellaFirma = (n) => {
+    if (n === 1 && sigPad1) sigPad1.clear();
+    if (n === 2 && sigPad2) sigPad2.clear();
+};
+
+// --- GENERAZIONE PDF (Disattivata - Ora gestita dalla Edge Function) ---
+/* async function generaPDF() {
+    // La generazione del PDF tramite jsPDF è stata disabilitata sul frontend
+    // per questioni di prestazioni sui cellulari. Ora Supabase genera
+    // un PDF molto più preciso e veloce lato server.
+    console.log("Generazione PDF demandata a Supabase Edge Functions");
+}
+*/
+
+// --- INVIO FINALE MODIFICATO PER NUOVA TABELLA ---
 
 window.inviaVerifica = async function() {
     const btn = document.getElementById('btnInvia');
-    const overlay = document.getElementById('loading-overlay');
     const op1 = document.getElementById('operatore_1').value;
+    const op2 = document.getElementById('operatore_2').value;
     const dataV = document.getElementById('dataVerifica').value;
 
-    if (sigPad.isEmpty()) return alert("La firma è obbligatoria!");
+    if (!op1 || sigPad1.isEmpty()) {
+        alert("Attenzione: Operatore 1 e Firma 1 sono obbligatori!");
+        return;
+    }
 
     btn.disabled = true;
-    overlay.style.display = 'flex';
+    btn.innerText = "🚀 INVIO IN CORSO...";
+    
+    // Mostriamo il loader se esiste nell'HTML
+    const loader = document.getElementById('loading-overlay');
+    if (loader) loader.style.display = 'flex';
 
     try {
-        // Prepariamo l'oggetto risposte (JSON)
+        // 1. Creiamo il JSON delle risposte per la nuova colonna 'risposte'
         const risposteJSON = {};
-        for (const [key, domande] of Object.entries(sezioni)) {
-            risposteJSON[key] = domande.map((d, i) => {
-                const id = `${key}_q${i}`;
+        for (const [nomeSezione, domande] of Object.entries(sezioni)) {
+            risposteJSON[nomeSezione] = domande.map((domanda, i) => {
+                const id = `${nomeSezione}_q${i}`;
+                const radioElement = document.querySelector(`input[name="${id}"]:checked`);
+                const risp = radioElement ? radioElement.value : "SI";
+                const notaElement = document.getElementById(`note_${id}`);
+                const nota = notaElement ? notaElement.value : "";
+                
                 return {
-                    domanda: d,
-                    risposta: document.querySelector(`input[name="${id}"]:checked`).value,
-                    nota: document.getElementById(`note_${id}`).value
+                    domanda: domanda,
+                    risposta: risp,
+                    nota: nota
                 };
             });
         }
 
+        // 2. Trasformiamo il logo pt.png in Base64 (se presente nel DOM)
+        let logoBase64 = "";
+        const imgElement = document.getElementById('mainLogo'); 
+        if (imgElement && imgElement.complete && imgElement.naturalHeight !== 0) {
+            const canvas = document.createElement("canvas");
+            canvas.width = imgElement.naturalWidth;
+            canvas.height = imgElement.naturalHeight;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(imgElement, 0, 0);
+            logoBase64 = canvas.toDataURL("image/png");
+        }
+
+        // 3. Prepariamo l'oggetto record per la nuova struttura del DB
         const record = {
             operatore_1: op1,
-            data_ispezione: dataV,
-            risposte: risposteJSON,
-            foto: fotoChecklist,
-            firma_base64: sigPad.toDataURL(),
+            operatore_2: op2,
+            data_ispezione: new Date(dataV).toISOString(),
+            risposte: risposteJSON,      // Sostituisce le vecchie colonne singole
+            foto: fotoChecklist,         // Invia l'oggetto JSON con le foto in base64
+            logo_base64: logoBase64,
+            firma_base64: sigPad1.toDataURL(),
+            firma_2_base64: sigPad2 && !sigPad2.isEmpty() ? sigPad2.toDataURL() : null,
             processato: false
         };
 
-        // 1. Salvataggio nel database
-        const { data, error } = await supabaseClient
+        // 4. Salvataggio nel database
+        const { data: dbData, error: dbErr } = await supabaseClient
             .from('verifiche_antincendio')
             .insert([record])
             .select();
 
-        if (error) throw error;
+        if (dbErr) throw new Error("Errore DB: " + dbErr.message);
+        
+        const nuovoRecord = dbData[0];
 
-        // 2. Chiamata alla Edge Function (Genera PDF e invia Email)
-        await supabaseClient.functions.invoke('antincendio', {
-            body: { record: data[0] }
+        // 5. Chiamata alla Edge Function 'antincendio'
+        const { data: funcData, error: funcErr } = await supabaseClient.functions.invoke('antincendio', {
+            body: { record: nuovoRecord }
         });
 
-        alert("🚀 Rapporto inviato con successo a Geom. Ripà!");
-        location.reload();
+        if (funcErr) {
+            console.error("Dettaglio errore funzione:", funcErr);
+            throw new Error("La funzione ha risposto con errore. Controlla i Log su Supabase.");
+        }
+
+        alert("🚀 Rapporto salvato e inviato correttamente!");
+        window.tornaAllaHome();
+        setTimeout(() => { location.reload(); }, 500);
 
     } catch (err) {
         console.error(err);
         alert("❌ Errore: " + err.message);
     } finally {
         btn.disabled = false;
-        overlay.style.display = 'none';
+        btn.innerText = "🚀 SALVA E INVIA A GEOM. RIPA";
+        if (loader) loader.style.display = 'none';
     }
 };
+
+// --- STORICO ---
 
 window.caricaStorico = async function() {
     document.getElementById('home-screen').style.display = 'none';
@@ -195,21 +288,45 @@ window.caricaStorico = async function() {
     document.getElementById('btnHomeFisso').style.display = 'block';
     
     const container = document.getElementById('lista-verifiche');
-    container.innerHTML = "Caricamento...";
+    container.innerHTML = "<p style='text-align:center;'>Caricamento in corso...</p>";
     
-    const { data, error } = await supabaseClient
-        .from('verifiche_antincendio')
-        .select('*')
-        .order('created_at', { ascending: false });
+    try {
+        const { data, error } = await supabaseClient
+            .from('verifiche_antincendio')
+            .select('*')
+            .order('created_at', { ascending: false });
             
-    if (error) {
-        container.innerHTML = "Errore.";
-    } else {
-        container.innerHTML = data.map(v => `
-            <div class="card-verifica" style="border-left: 5px solid #004a99;">
-                <strong>${v.operatore_1}</strong> - ${new Date(v.data_ispezione).toLocaleDateString()}<br>
-                <a href="${v.pdf_url}" target="_blank" style="color:#004a99; font-weight:bold;">VEDI PDF 📄</a>
+        if (error) throw error;
+        
+        if (data.length === 0) {
+            container.innerHTML = "<p style='text-align:center;'>Nessuna verifica trovata.</p>";
+            return;
+        }
+
+        container.innerHTML = data.map(v => {
+            // Se c'è un secondo operatore, lo mostra nello storico
+            const op2Text = v.operatore_2 ? ` (+ ${v.operatore_2})` : "";
+            
+            return `
+            <div class="card-verifica" style="border-left: 5px solid #004a99; margin-bottom:10px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <strong>${v.operatore_1}${op2Text}</strong>
+                    <span style="font-size:0.8rem; color:#666;">${new Date(v.data_ispezione).toLocaleDateString()}</span>
+                </div>
+                <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:0.7rem; color:#999;">ID: ${v.id.substring(0,8)}...</span>
+                    ${v.pdf_url ? `<a href="${v.pdf_url}" target="_blank" style="background:#004a99; color:white; padding:5px 10px; border-radius:5px; text-decoration:none; font-size:0.8rem;">VEDI PDF 📄</a>` : `<span style="font-size:0.8rem; color:orange;">In elaborazione...</span>`}
+                </div>
             </div>
-        `).join('');
+        `}).join('');
+    } catch (e) { 
+        container.innerHTML = "<p style='color:red;'>Errore nel caricamento dello storico.</p>"; 
     }
 };
+
+// Imposta data odierna all'avvio
+window.addEventListener('load', () => {
+    if (document.getElementById('dataVerifica')) {
+        document.getElementById('dataVerifica').valueAsDate = new Date();
+    }
+});
