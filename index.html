@@ -515,13 +515,13 @@ window.inviaVerifica = async function() {
 
         // 2. Upload su Supabase Storage
         const { data: upData, error: upErr } = await supabaseClient.storage
-            .from('ai_verificheiche')
+            .from('ai_verifiche')
             .upload(fileName, pdfBlob, { contentType: 'application/pdf' });
         
         if (upErr) throw new Error("Errore Bucket: " + upErr.message);
 
         // 3. Ottieni URL pubblico
-        const { data: urlData } = supabaseClient.storage.from('ai_verificheiche').getPublicUrl(fileName);
+        const { data: urlData } = supabaseClient.storage.from('ai_verifiche').getPublicUrl(fileName);
         const publicUrl = urlData.publicUrl;
 
         // 4. Salva nel Database
