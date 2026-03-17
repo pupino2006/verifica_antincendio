@@ -278,7 +278,7 @@ window.inviaVerifica = async function() {
     const dataV = document.getElementById('dataVerifica').value;
 
     if (!op1 || sigPad1.isEmpty()) {
-        alert("Attenzione: Operatore 1 e Firma 1 sono obbligatori!");
+        alert("Attenzione: Operatore 1 e Firma sono obbligatori!");
         return;
     }
 
@@ -286,71 +286,74 @@ window.inviaVerifica = async function() {
     btn.innerText = "🚀 INVIO IN CORSO...";
 
     try {
-        // 1. Prepariamo i testi delle sezioni per la Edge Function
+        // 1. Funzione per raggruppare le risposte in testo leggibile
         const preparaDatiSezione = (nomeSezione) => {
             let testo = "";
+            if (!sezioni[nomeSezione]) return "Nessun dato";
             sezioni[nomeSezione].forEach((domanda, i) => {
                 const id = `${nomeSezione}_q${i}`;
                 const risp = document.querySelector(`input[name="${id}"]:checked`)?.value || "SI";
                 const nota = document.getElementById(`note_${id}`).value;
-                testo += `${domanda}: ${risp}${nota ? ' (Nota: ' + nota + ')' : ''}\n`;
+                testo += `- ${domanda}: ${risp}${nota ? ' [NOTA: ' + nota + ']' : ''}\n`;
             });
             return testo;
         };
 
-        // 2. Recuperiamo il logo PT.PNG in formato Base64 per passarlo alla funzione
-        // Se il logo è presente nella pagina con id "mainLogo"
+        // 2. Trasformiamo il logo pt.png in Base64 (se presente nel DOM)
         let logoBase64 = "";
-        const imgLogo = document.getElementById('mainLogo');
-        if (imgLogo) {
+        const imgElement = document.getElementById('mainLogo'); 
+        if (imgElement) {
             const canvas = document.createElement("canvas");
-            canvas.width = imgLogo.width;
-            canvas.height = imgLogo.height;
+            canvas.width = imgElement.naturalWidth;
+            canvas.height = imgElement.naturalHeight;
             const ctx = canvas.getContext("2d");
-            ctx.drawImage(imgLogo, 0, 0);
+            ctx.drawImage(imgElement, 0, 0);
             logoBase64 = canvas.toDataURL("image/png");
         }
 
-        // 3. Costruiamo l'oggetto da inviare al Database e alla Function
-        const recordDaInviare = {
+        // 3. Prepariamo l'oggetto record ESATTAMENTE come le colonne del DB
+        const record = {
             operatore_1: op1,
             operatore_2: op2,
-            data_ispezione: dataV,
+            data_ispezione: new Date(dataV).toISOString(), // Formato corretto per il DB
             estintori: preparaDatiSezione('estintori'),
             idranti: preparaDatiSezione('idranti'),
             luci_emergenza: preparaDatiSezione('luci_di_emergenza'),
             porte: preparaDatiSezione('porte_tagliafuoco'),
-            firma_base64: sigPad1.toDataURL(), 
-            foto_checklist: fotoChecklist, // Tutte le foto scattate
-            logo_base64: logoBase64 // Passiamo il logo alla funzione
+            firma_base64: sigPad1.toDataURL(),
+            foto_checklist: fotoChecklist, // Oggetto JSON con le foto
+            logo_base64: logoBase64,
+            processato: false
         };
 
         // 4. Salvataggio nel database
         const { data: dbData, error: dbErr } = await supabaseClient
             .from('verifiche_antincendio')
-            .insert([recordDaInviare])
+            .insert([record])
             .select();
 
-        if (dbErr) throw dbErr;
+        if (dbErr) throw new Error("Errore DB: " + dbErr.message);
+        
         const nuovoRecord = dbData[0];
 
-        // 5. CHIAMATA ALLA EDGE FUNCTION (L'invio vero e proprio della mail)
-        // La funzione 'antincendio' riceve il record, crea il PDF e usa RESEND per la mail
+        // 5. Chiamata alla Edge Function 'antincendio'
         const { data: funcData, error: funcErr } = await supabaseClient.functions.invoke('antincendio', {
             body: { record: nuovoRecord }
         });
 
-        if (funcErr) throw funcErr;
+        if (funcErr) {
+            // Se la funzione fallisce ma il record è salvato, avvisiamo
+            console.error("Dettaglio errore funzione:", funcErr);
+            throw new Error("La funzione ha risposto con errore. Controlla i Log su Supabase.");
+        }
 
-        alert("🚀 Verifica salvata e mail inviata correttamente a Geom. Ripà!");
-        
-        // Reset e ritorno alla home
+        alert("🚀 Rapporto salvato e inviato correttamente!");
         window.tornaAllaHome();
-        setTimeout(() => { location.reload(); }, 1000);
+        setTimeout(() => { location.reload(); }, 500);
 
     } catch (err) {
-        console.error("Errore Invio:", err);
-        alert("❌ Errore durante l'invio automatico: " + err.message);
+        console.error(err);
+        alert("❌ Errore: " + err.message);
     } finally {
         btn.disabled = false;
         btn.innerText = "🚀 SALVA E INVIA A GEOM. RIPA";
