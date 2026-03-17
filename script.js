@@ -3,11 +3,12 @@ const SB_URL = "https://vnzrewcbnoqbqvzckome.supabase.co";
 const SB_KEY = "sb_publishable_Sq9txbu-PmKdbxETSx2cjw_WqWEFBPO"; 
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
-const EDGE_FUNCTION_URL = "https://vnzrewcbnoqbqvzckome.supabase.co/functions/v1/generate-pdf-function";
-
-let signaturePad = null;
+// Variabili globali per firme e foto
+let sigPad1 = null;
+let sigPad2 = null;
 let fotoChecklist = {};
 
+// Definizione completa delle sezioni e domande
 const sezioni = {
     "estintori": [
         "Gli estintori sono segnalati da apposita cartellonistica?",
@@ -51,7 +52,7 @@ window.mostraApp = function() {
     document.getElementById('tab-storico').style.display = 'none';
     document.getElementById('btnHomeFisso').style.display = 'block';
     
-    fotoChecklist = {};
+    fotoChecklist = {}; // Reset foto
     window.renderChecklist();
     window.openTab(null, 'tab-info');
 };
@@ -73,8 +74,9 @@ window.openTab = function(evt, tabName) {
     const targetTab = document.getElementById(tabName);
     if (targetTab) targetTab.style.display = "block";
 
+    // Inizializza le firme quando si arriva all'ultimo tab
     if (tabName === 'tab-invio') {
-        setTimeout(() => { window.initSignature(); }, 150);
+        setTimeout(() => { window.initSignatures(); }, 200);
     }
 
     if (evt && evt.currentTarget) {
@@ -83,7 +85,10 @@ window.openTab = function(evt, tabName) {
         const firstBtn = document.querySelector(`.tab-btn[onclick*="${tabName}"]`);
         if (firstBtn) firstBtn.classList.add("active");
     }
+    window.scrollTo(0,0);
 };
+
+// --- RENDERING CHECKLIST ---
 
 window.renderChecklist = function() {
     const container = document.getElementById('checklist-container');
@@ -96,18 +101,18 @@ window.renderChecklist = function() {
             const id = `${key}_q${index}`;
             html += `
                 <div class="card-verifica">
-                    <p class="text-sm font-semibold mb-3 text-gray-700">${domanda}</p>
-                    <div class="opzioni-si-no">
-                        <label><input type="radio" name="${id}" value="SI"> ✅ SI</label>
+                    <p class="domanda-testo">${domanda}</p>
+                    <div class="opzioni">
+                        <label><input type="radio" name="${id}" value="SI" checked> ✅ SI</label>
                         <label><input type="radio" name="${id}" value="NO"> ❌ NO</label>
                     </div>
                     <div style="display:flex; gap:10px; margin-top:10px;">
-                        <textarea class="area-note" id="note_${id}" placeholder="Note..."></textarea>
-                        <button type="button" class="btn-foto" onclick="window.scattaFoto('${id}')">📷</button>
+                        <textarea class="area-note" id="note_${id}" placeholder="Note o anomalie..."></textarea>
+                        <button type="button" class="btn-foto" onclick="window.scattaFoto('${id}')">📸</button>
                     </div>
-                    <div id="preview_${id}" style="margin-top:10px; display:none;">
-                        <img id="img_${id}" src="" style="width:80px; border-radius:5px;">
-                        <button type="button" onclick="window.rimuoviFoto('${id}')" style="color:red; font-size:10px;">Rimuovi</button>
+                    <div id="preview_${id}" class="photo-preview" style="display:none; margin-top:10px;">
+                        <img id="img_${id}" src="" style="width:100px; border-radius:8px; border:1px solid #ddd;">
+                        <button type="button" onclick="window.rimuoviFoto('${id}')" style="color:red; background:none; border:none; font-size:12px; display:block;">Rimuovi</button>
                     </div>
                     <input type="file" id="file_${id}" accept="image/*" capture="environment" style="display:none;" onchange="window.gestisciFoto(event, '${id}')">
                 </div>
@@ -117,7 +122,7 @@ window.renderChecklist = function() {
     container.innerHTML = html;
 };
 
-// --- FOTO ---
+// --- GESTIONE FOTO ---
 
 window.scattaFoto = (id) => document.getElementById(`file_${id}`).click();
 
@@ -137,102 +142,209 @@ window.gestisciFoto = (e, id) => {
 window.rimuoviFoto = (id) => {
     delete fotoChecklist[id];
     document.getElementById(`preview_${id}`).style.display = "none";
+    document.getElementById(`file_${id}`).value = "";
 };
 
-// --- FIRMA ---
+// --- GESTIONE FIRME (DOPPIE) ---
 
-window.initSignature = function() {
-    const canvas = document.getElementById('signature-pad');
-    if (!canvas) return;
-    if (!signaturePad) {
-        signaturePad = new SignaturePad(canvas, { backgroundColor: 'white', penColor: 'black' });
+window.initSignatures = function() {
+    const canvas1 = document.getElementById('signature-pad-1');
+    const canvas2 = document.getElementById('signature-pad-2');
+    
+    if (canvas1 && !sigPad1) {
+        sigPad1 = new SignaturePad(canvas1, { backgroundColor: 'white' });
+        window.resizeCanvas(canvas1);
     }
-    window.resizeCanvas();
+    if (canvas2 && !sigPad2) {
+        sigPad2 = new SignaturePad(canvas2, { backgroundColor: 'white' });
+        window.resizeCanvas(canvas2);
+    }
 };
 
-window.resizeCanvas = function() {
-    const canvas = document.getElementById('signature-pad');
-    if (!canvas) return;
+window.resizeCanvas = function(canvas) {
     const ratio = Math.max(window.devicePixelRatio || 1, 1);
     canvas.width = canvas.offsetWidth * ratio;
     canvas.height = canvas.offsetHeight * ratio;
     canvas.getContext("2d").scale(ratio, ratio);
 };
 
-window.cancellaFirma = () => signaturePad && signaturePad.clear();
+window.cancellaFirma = (n) => {
+    if (n === 1 && sigPad1) sigPad1.clear();
+    if (n === 2 && sigPad2) sigPad2.clear();
+};
 
-// --- SALVATAGGIO E INVIO ---
+// --- GENERAZIONE PDF (Logica interna per jsPDF) ---
+
+async function generaPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const op1 = document.getElementById('operatore_1').value;
+    const op2 = document.getElementById('operatore_2').value || "Nessuno";
+    const dataV = document.getElementById('dataVerifica').value;
+
+    // Intestazione
+    doc.setFontSize(18);
+    doc.setTextColor(0, 74, 153);
+    doc.text("REPORT VERIFICA ANTINCENDIO", 105, 20, { align: "center" });
+    
+    doc.setFontSize(10);
+    doc.setTextColor(0);
+    doc.text(`Data: ${dataV}`, 15, 30);
+    doc.text(`Operatore 1: ${op1}`, 15, 35);
+    doc.text(`Operatore 2: ${op2}`, 15, 40);
+    
+    let y = 50;
+
+    // Ciclo su risposte
+    for (const [sez, domande] of Object.entries(sezioni)) {
+        if (y > 270) { doc.addPage(); y = 20; }
+        doc.setFont("helvetica", "bold");
+        doc.text(sez.toUpperCase().replace(/_/g, ' '), 15, y);
+        y += 7;
+        doc.setFont("helvetica", "normal");
+        
+        domande.forEach((d, i) => {
+            const id = `${sez}_q${i}`;
+            const risp = document.querySelector(`input[name="${id}"]:checked`)?.value || "N.D.";
+            const nota = document.getElementById(`note_${id}`).value;
+            
+            const testoDomanda = doc.splitTextToSize(`${i+1}. ${d}`, 160);
+            doc.text(testoDomanda, 15, y);
+            doc.text(risp, 180, y);
+            y += (testoDomanda.length * 5);
+            
+            if (nota) {
+                doc.setFontSize(8);
+                doc.setTextColor(100);
+                doc.text(`Nota: ${nota}`, 20, y);
+                y += 5;
+                doc.setFontSize(10);
+                doc.setTextColor(0);
+            }
+            y += 2;
+            if (y > 275) { doc.addPage(); y = 20; }
+        });
+        y += 5;
+    }
+
+    // Firme
+    if (y > 230) { doc.addPage(); y = 20; }
+    doc.text("Firma Operatore 1:", 15, y + 10);
+    doc.addImage(sigPad1.toDataURL(), 'PNG', 15, y + 15, 50, 25);
+    
+    if (!sigPad2.isEmpty()) {
+        doc.text("Firma Operatore 2:", 110, y + 10);
+        doc.addImage(sigPad2.toDataURL(), 'PNG', 110, y + 15, 50, 25);
+    }
+
+    return doc.output('blob');
+}
+
+// --- INVIO FINALE ---
+
 window.inviaVerifica = async function() {
     const btn = document.getElementById('btnInvia');
     const op1 = document.getElementById('operatore_1').value;
 
-    if (!op1 || signaturePad.isEmpty()) {
-        alert("Inserire Operatore e Firma!");
+    if (!op1 || sigPad1.isEmpty()) {
+        alert("Attenzione: Operatore 1 e Firma 1 sono obbligatori!");
         return;
     }
 
     btn.disabled = true;
-    btn.innerText = "Generazione PDF...";
+    btn.innerText = "⏳ Generazione e Caricamento...";
 
     try {
-        // 1. Genera PDF Blob
+        // 1. Genera PDF
         const pdfBlob = await generaPDF();
-        const nomeFile = `verifica_${Date.now()}.pdf`;
+        const nomeFile = `verifica_${Date.now()}_${op1.replace(/\s/g, '_')}.pdf`;
 
-        // 2. Carica su Storage
+        // 2. Carica su Supabase Storage
         const { data: upData, error: upErr } = await supabaseClient.storage
-            .from('ai_verificheiche') // Assicurati che il bucket esista ed è PUBBLICO
+            .from('ai_verificheiche') // Assicurati che questo bucket esista
             .upload(nomeFile, pdfBlob);
         
         if (upErr) throw upErr;
 
+        // 3. Ottieni URL Pubblico
         const { data: urlData } = supabaseClient.storage.from('ai_verificheiche').getPublicUrl(nomeFile);
         const publicUrl = urlData.publicUrl;
 
-        // 3. Salva su Database
-        await supabaseClient.from('verifiche_antincendio').insert([{
+        // 4. Salva il record nel Database
+        const { error: dbErr } = await supabaseClient.from('verifiche_antincendio').insert([{
             operatore_1: op1,
-            data_ispezione: new Date(),
+            operatore_2: document.getElementById('operatore_2').value,
+            data_ispezione: document.getElementById('dataVerifica').value,
             pdf_url: publicUrl
         }]);
 
-        // 4. INVIO MAIL (Stessa logica Rapportini)
-        const subject = encodeURIComponent(`Verifica Antincendio - ${op1}`);
-        const body = encodeURIComponent(`Buongiorno,\nin allegato il link al report della verifica antincendio:\n\n${publicUrl}\n\nCordiali saluti.`);
-        const mailTo = "sicurezza@pannellitermici.it"; // La tua mail aziendale
+        if (dbErr) throw dbErr;
+
+        // 5. Preparazione Email
+        const subject = encodeURIComponent(`REPORT ANTINCENDIO: ${op1}`);
+        const body = encodeURIComponent(`Buongiorno,\nè stato completato un nuovo report di verifica.\n\nOperatore: ${op1}\nLink al PDF: ${publicUrl}\n\nCordiali saluti.`);
+        const mailTo = "geom.rip@gmail.com";
         
-        alert("✅ Dati salvati! Ora si aprirà la tua mail per l'invio del link.");
+        alert("✅ Verifica salvata con successo nel database!");
         
+        // Apre il client mail
         window.location.href = `mailto:${mailTo}?subject=${subject}&body=${body}`;
 
-        window.tornaAllaHome();
+        // Reset e ritorno alla home
+        setTimeout(() => { window.tornaAllaHome(); location.reload(); }, 1000);
 
     } catch (err) {
-        alert("Errore: " + err.message);
+        console.error(err);
+        alert("Errore durante il salvataggio: " + err.message);
     } finally {
         btn.disabled = false;
-        btn.innerText = "🚀 SALVA E GENERA PDF";
+        btn.innerText = "🚀 SALVA E INVIA A GEOM. RIPA";
     }
-}
+};
+
+// --- STORICO ---
 
 window.caricaStorico = async function() {
     document.getElementById('home-screen').style.display = 'none';
     document.getElementById('tab-storico').style.display = 'block';
     document.getElementById('btnHomeFisso').style.display = 'block';
+    
     const container = document.getElementById('lista-verifiche');
-    container.innerHTML = "Caricamento...";
+    container.innerHTML = "<p style='text-align:center;'>Caricamento in corso...</p>";
+    
     try {
-        const { data, error } = await supabaseClient.from('verifiche_antincendio').select('*').order('created_at', { ascending: false });
+        const { data, error } = await supabaseClient
+            .from('verifiche_antincendio')
+            .select('*')
+            .order('created_at', { ascending: false });
+            
         if (error) throw error;
+        
+        if (data.length === 0) {
+            container.innerHTML = "<p style='text-align:center;'>Nessuna verifica trovata.</p>";
+            return;
+        }
+
         container.innerHTML = data.map(v => `
-            <div class="bg-white p-4 mb-2 rounded border-l-4 ${v.processato ? 'border-green-500' : 'border-gray-300'}">
-                <strong>${v.operatore_1}</strong> - ${new Date(v.created_at).toLocaleDateString()}<br>
-                ${v.pdf_url ? `<a href="${v.pdf_url}" target="_blank" class="text-blue-500 underline text-xs">Apri PDF</a>` : 'In elaborazione...'}
+            <div class="card-verifica" style="border-left: 5px solid #004a99; margin-bottom:10px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <strong>${v.operatore_1}</strong>
+                    <span style="font-size:0.8rem; color:#666;">${new Date(v.data_ispezione).toLocaleDateString()}</span>
+                </div>
+                <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:0.7rem; color:#999;">ID: ${v.id}</span>
+                    <a href="${v.pdf_url}" target="_blank" style="background:#004a99; color:white; padding:5px 10px; border-radius:5px; text-decoration:none; font-size:0.8rem;">VEDI PDF 📄</a>
+                </div>
             </div>
         `).join('');
-    } catch (e) { container.innerHTML = "Errore storico."; }
+    } catch (e) { 
+        container.innerHTML = "<p style='color:red;'>Errore nel caricamento dello storico.</p>"; 
+    }
 };
 
+// Imposta data odierna all'avvio
 window.addEventListener('load', () => {
-    if (document.getElementById('dataVerifica')) document.getElementById('dataVerifica').valueAsDate = new Date();
+    if (document.getElementById('dataVerifica')) {
+        document.getElementById('dataVerifica').valueAsDate = new Date();
+    }
 });
