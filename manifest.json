@@ -1,6 +1,6 @@
 {
   "name": "Pannelli Termici Verifica Antincendio",
-  "short_name": "PT Verofoche AI",
+  "short_name": "PT Verifiche AI",
   "description": "App per la gestione della verifica antincendio",
   "start_url": "index.html",
   "display": "standalone",
