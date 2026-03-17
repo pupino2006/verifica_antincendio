@@ -274,6 +274,8 @@ async function generaPDF() {
 window.inviaVerifica = async function() {
     const btn = document.getElementById('btnInvia');
     const op1 = document.getElementById('operatore_1').value;
+    const op2 = document.getElementById('operatore_2').value;
+    const dataV = document.getElementById('dataVerifica').value;
 
     if (!op1 || sigPad1.isEmpty()) {
         alert("Attenzione: Operatore 1 e Firma 1 sono obbligatori!");
@@ -281,57 +283,74 @@ window.inviaVerifica = async function() {
     }
 
     btn.disabled = true;
-    btn.innerText = "⏳ Generazione e Caricamento...";
+    btn.innerText = "🚀 INVIO IN CORSO...";
 
     try {
-        // 1. Genera PDF
-        const pdfBlob = await generaPDF();
-        // Creiamo un nome file pulito
-        const nomeFile = `report_${Date.now()}.pdf`;
-
-        // 2. Carica su Supabase Storage
-        // NOTA: Ho cambiato 'ai_verifiche' in 'ai_verifiche'
-        const { data: upData, error: upErr } = await supabaseClient.storage
-            .from('ai_verifiche') 
-            .upload(nomeFile, pdfBlob, {
-                contentType: 'application/pdf',
-                upsert: true
+        // 1. Prepariamo i testi delle sezioni per la Edge Function
+        const preparaDatiSezione = (nomeSezione) => {
+            let testo = "";
+            sezioni[nomeSezione].forEach((domanda, i) => {
+                const id = `${nomeSezione}_q${i}`;
+                const risp = document.querySelector(`input[name="${id}"]:checked`)?.value || "SI";
+                const nota = document.getElementById(`note_${id}`).value;
+                testo += `${domanda}: ${risp}${nota ? ' (Nota: ' + nota + ')' : ''}\n`;
             });
-        
-        if (upErr) {
-            console.error("Errore Upload:", upErr);
-            throw new Error(`Errore Storage: ${upErr.message}. Verifica che il bucket 'ai_verifiche' esista su Supabase!`);
+            return testo;
+        };
+
+        // 2. Recuperiamo il logo PT.PNG in formato Base64 per passarlo alla funzione
+        // Se il logo è presente nella pagina con id "mainLogo"
+        let logoBase64 = "";
+        const imgLogo = document.getElementById('mainLogo');
+        if (imgLogo) {
+            const canvas = document.createElement("canvas");
+            canvas.width = imgLogo.width;
+            canvas.height = imgLogo.height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(imgLogo, 0, 0);
+            logoBase64 = canvas.toDataURL("image/png");
         }
 
-        // 3. Ottieni URL Pubblico
-        const { data: urlData } = supabaseClient.storage.from('ai_verifiche').getPublicUrl(nomeFile);
-        const publicUrl = urlData.publicUrl;
-
-        // 4. Salva il record nel Database
-        const { error: dbErr } = await supabaseClient.from('verifiche_antincendio').insert([{
+        // 3. Costruiamo l'oggetto da inviare al Database e alla Function
+        const recordDaInviare = {
             operatore_1: op1,
-            operatore_2: document.getElementById('operatore_2').value,
-            data_ispezione: document.getElementById('dataVerifica').value,
-            pdf_url: publicUrl
-        }]);
+            operatore_2: op2,
+            data_ispezione: dataV,
+            estintori: preparaDatiSezione('estintori'),
+            idranti: preparaDatiSezione('idranti'),
+            luci_emergenza: preparaDatiSezione('luci_di_emergenza'),
+            porte: preparaDatiSezione('porte_tagliafuoco'),
+            firma_base64: sigPad1.toDataURL(), 
+            foto_checklist: fotoChecklist, // Tutte le foto scattate
+            logo_base64: logoBase64 // Passiamo il logo alla funzione
+        };
+
+        // 4. Salvataggio nel database
+        const { data: dbData, error: dbErr } = await supabaseClient
+            .from('verifiche_antincendio')
+            .insert([recordDaInviare])
+            .select();
 
         if (dbErr) throw dbErr;
+        const nuovoRecord = dbData[0];
 
-        // 5. Preparazione Email
-        const subject = encodeURIComponent(`REPORT ANTINCENDIO: ${op1}`);
-        const body = encodeURIComponent(`Buongiorno,\nè stato completato un nuovo report di verifica.\n\nOperatore: ${op1}\nLink al PDF: ${publicUrl}\n\nCordiali saluti.`);
-        
-        alert("✅ Verifica salvata e caricata correttamente!");
-        
-        // Apre il client mail
-        window.location.href = `mailto:geom.rip@gmail.com?subject=${subject}&body=${body}`;
+        // 5. CHIAMATA ALLA EDGE FUNCTION (L'invio vero e proprio della mail)
+        // La funzione 'antincendio' riceve il record, crea il PDF e usa RESEND per la mail
+        const { data: funcData, error: funcErr } = await supabaseClient.functions.invoke('antincendio', {
+            body: { record: nuovoRecord }
+        });
 
-        // Reset
-        setTimeout(() => { location.reload(); }, 2000);
+        if (funcErr) throw funcErr;
+
+        alert("🚀 Verifica salvata e mail inviata correttamente a Geom. Ripà!");
+        
+        // Reset e ritorno alla home
+        window.tornaAllaHome();
+        setTimeout(() => { location.reload(); }, 1000);
 
     } catch (err) {
-        console.error(err);
-        alert(err.message);
+        console.error("Errore Invio:", err);
+        alert("❌ Errore durante l'invio automatico: " + err.message);
     } finally {
         btn.disabled = false;
         btn.innerText = "🚀 SALVA E INVIA A GEOM. RIPA";
