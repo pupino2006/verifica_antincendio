@@ -182,7 +182,7 @@ async function generaPDF() {
     const dataV = document.getElementById('dataVerifica').value;
 
     // --- TESTATA E LOGO ---
-    const logoImg = document.getElementById('mainLogo');
+    const logoImg = document.getElementById('pt');
     if (logoImg) {
         try {
             // Inserisce il logo pt.png
