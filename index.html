@@ -28,6 +28,7 @@
             -webkit-tap-highlight-color: transparent;
         }
         
+        /* Header e Navigazione */
         .header-logo { 
             display: flex; 
             justify-content: center; 
@@ -79,6 +80,7 @@
             background: rgba(255,255,255,0.1); 
         }
 
+        /* Layout */
         .container { padding: 20px; max-width: 600px; margin: auto; }
         .input-group { margin-bottom: 20px; }
         .input-group label { display: block; font-weight: bold; margin-bottom: 8px; color: var(--primary); font-size: 0.85rem; }
@@ -107,6 +109,7 @@
             text-transform: uppercase;
         }
 
+        /* Firma */
         .signature-container { 
             border: 2px dashed #ccc; 
             background: #fff; 
@@ -120,6 +123,7 @@
             display: block; 
         }
 
+        /* Bottoni */
         .btn-main { 
             width: 100%; 
             padding: 18px; 
@@ -131,7 +135,6 @@
             font-weight: bold; 
             cursor: pointer; 
         }
-        .btn-main:disabled { background: var(--secondary); opacity: 0.7; }
         
         .btn-clear { 
             margin-top: 8px; 
@@ -144,6 +147,20 @@
             font-weight: bold;
         }
         
+        .btn-foto { 
+            background: #f8f9fa; 
+            border: 1px solid #ddd; 
+            border-radius: 8px; 
+            padding: 12px; 
+            width: 100%;
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 10px; 
+            color: #555;
+            font-weight: bold;
+        }
         .area-note { 
             width: 100%; 
             height: 70px; 
@@ -155,6 +172,10 @@
             resize: none;
         }
 
+        .photo-preview { display: none; margin-top: 10px; border: 2px solid var(--success); border-radius: 8px; overflow: hidden; }
+        .photo-preview img { width: 100%; display: block; }
+
+        /* Loader Overlay */
         #loading-overlay {
             display: none;
             position: fixed;
@@ -172,8 +193,8 @@
 <body>
 
     <div id="loading-overlay">
-        <div style="font-size: 2rem; margin-bottom: 20px;">⌛</div>
-        <div id="loading-text">Generazione Report e Invio...</div>
+        <div style="font-size: 2rem; margin-bottom: 20px;">⏳</div>
+        <div id="loading-text">Generazione Report e Invio Mail...</div>
     </div>
 
     <button id="btnHomeFisso" class="btn-home-fixed" onclick="tornaAllaHome()">🏠 HOME</button>
@@ -261,7 +282,8 @@
             </div>
             <button class="btn-clear" onclick="cancellaFirma(2)">CANCELLA FIRMA 2</button>
             
-            <button id="btnInvia" class="btn-main" style="background: var(--success); margin-top: 50px;" onclick="inviaVerifica()">🚀 SALVA E INVIA REPORT</button>
+            <button id="btnInvia" class="btn-main" style="background: var(--success); margin-top: 50px;" onclick="inviaVerifica()">🚀 SALVA E INVIA A GEOM. RIPA</button>
+            <p style="font-size: 11px; text-align: center; color: #888; margin-top: 15px;">Il PDF verrà inviato automaticamente a geom.rip@gmail.com</p>
         </div>
     </div>
 
@@ -272,21 +294,49 @@
     </div>
 
     <script>
+        // --- CONFIGURAZIONE ---
         const SB_URL = "https://vnzrewcbnoqbqvzckome.supabase.co";
-        const SB_KEY = "sb_publishable_Sq9txbu-PmKdbxETSx2cjw_WqWEFBPO"; 
+        const SB_KEY = "sb_publishable_Sq9txbu-PmKdbxETSx2cjw_WqWEFBPO";
         const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
         let sigPad1, sigPad2;
+        let fotoChecklist = {};
 
+        // Tutte le sezioni originali (600 righe di logica richiedono l'elenco completo)
         const sezioni = {
-            "estintori": ["Gli estintori sono segnalati?", "Sono accessibili?", "Assenza anomalie?", "Ultimo controllo < 6 mesi?"],
-            "idranti": ["Idranti segnalati?", "Accessibili?", "Assenza anomalie?", "Ultimo controllo < 6 mesi?"],
-            "luci_di_emergenza": ["Funzionanti?", "Assenza anomalie?"],
-            "impianto_irai": ["Rivelatori accessibili?", "Assenza anomalie?"],
-            "porte_tagliafuoco": ["Libere da ostacoli?", "Prove apertura OK?", "Controllo < 6 mesi?"],
-            "vie_di_esodo": ["Percorsi liberi?", "Illuminazione OK?", "Assenza materiali infiammabili?"]
+            "estintori": [
+                "Gli estintori sono segnalati da apposita cartellonistica?",
+                "Gli estintori sono prontamente individuabili e facilmente accessibili?",
+                "Assenza di anomalie e/o fattori di pericolo (manometro, integrità, spina)?",
+                "L’ultimo controllo non è più vecchio di sei mesi?"
+            ],
+            "idranti": [
+                "Gli idranti sono segnalati da apposita cartellonistica?",
+                "Gli idranti sono prontamente individuabili e facilmente accessibili?",
+                "Assenza di anomalie (lancia, manichetta avvolta, cassetta)?",
+                "L’ultimo controllo non è più vecchio di sei mesi?"
+            ],
+            "luci_di_emergenza": [
+                "Le luci di emergenza sono funzionanti?",
+                "Assenza di anomalie (batterie, cartellonistica)?"
+            ],
+            "impianto_irai": [
+                "Rivelatori e pulsanti sono accessibili e segnalati?",
+                "Assenza di anomalie sui dispositivi?"
+            ],
+            "porte_tagliafuoco": [
+                "Porte segnalate e libere da ostacoli?",
+                "Le prove di apertura/chiusura sono conformi?",
+                "L'ultimo controllo non è più vecchio di sei mesi?"
+            ],
+            "vie_di_esodo": [
+                "Percorsi segnalati e liberi da ostacoli?",
+                "Le vie di esodo sono adeguatamente illuminate?",
+                "Assenza di materiali infiammabili sui percorsi?"
+            ]
         };
 
+        // --- CORE FUNCTIONS ---
         window.mostraApp = () => {
             document.getElementById('home-screen').style.display = 'none';
             document.getElementById('app-interface').style.display = 'block';
@@ -296,18 +346,17 @@
         };
 
         window.tornaAllaHome = () => {
-            document.getElementById('home-screen').style.display = 'block';
-            document.getElementById('app-interface').style.display = 'none';
-            document.getElementById('tab-storico').style.display = 'none';
-            document.getElementById('btnHomeFisso').style.display = 'none';
+            location.reload(); 
         };
 
         window.openTab = (evt, tabName) => {
             document.querySelectorAll(".tab-content").forEach(t => t.style.display = "none");
             document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+            
             document.getElementById(tabName).style.display = "block";
             const targetBtn = evt ? evt.currentTarget : document.getElementById('btn-' + tabName);
             if(targetBtn) targetBtn.classList.add("active");
+
             if (tabName === 'tab-invio') setTimeout(initSignatures, 200);
             window.scrollTo(0,0);
         };
@@ -326,131 +375,143 @@
                                 <label><input type="radio" name="${id}" value="SI" checked> SI</label>
                                 <label><input type="radio" name="${id}" value="NO"> NO</label>
                             </div>
-                            <textarea id="note_${id}" class="area-note" placeholder="Note..."></textarea>
+                            <button class="btn-foto" onclick="document.getElementById('input_${id}').click()">📸 SCATTA FOTO</button>
+                            <div id="preview_${id}" class="photo-preview"><img id="img_${id}"></div>
+                            <textarea id="note_${id}" class="area-note" placeholder="Inserisci note qui..."></textarea>
+                            <input type="file" id="input_${id}" style="display:none" accept="image/*" capture="environment" onchange="caricaFoto(event, '${id}')">
                         </div>`;
                 });
             }
             container.innerHTML = html;
         }
 
+        window.caricaFoto = (e, id) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                fotoChecklist[id] = ev.target.result;
+                document.getElementById(`img_${id}`).src = ev.target.result;
+                document.getElementById(`preview_${id}`).style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        };
+
         function initSignatures() {
             const canvas1 = document.getElementById('signature-pad-1');
             const canvas2 = document.getElementById('signature-pad-2');
+            
             const resize = (canvas) => {
                 const ratio = Math.max(window.devicePixelRatio || 1, 1);
                 canvas.width = canvas.offsetWidth * ratio;
                 canvas.height = canvas.offsetHeight * ratio;
                 canvas.getContext("2d").scale(ratio, ratio);
             };
-            if (canvas1 && !sigPad1) { resize(canvas1); sigPad1 = new SignaturePad(canvas1); }
-            if (canvas2 && !sigPad2) { resize(canvas2); sigPad2 = new SignaturePad(canvas2); }
+
+            if (!sigPad1) { resize(canvas1); sigPad1 = new SignaturePad(canvas1); }
+            if (!sigPad2) { resize(canvas2); sigPad2 = new SignaturePad(canvas2); }
         }
 
         window.cancellaFirma = (n) => (n === 1 ? sigPad1 : sigPad2).clear();
 
+        // --- INVIO E LOGICA SERVER ---
         window.inviaVerifica = async () => {
             const op1 = document.getElementById('operatore_1').value;
+            const op2 = document.getElementById('operatore_2').value;
             const dataV = document.getElementById('dataVerifica').value;
 
-            if (!op1 || sigPad1.isEmpty()) {
-                alert("Manca Operatore 1 o la Firma!");
+            if (!op1 || !dataV || sigPad1.isEmpty()) {
+                alert("Operatore 1, Data e Firma 1 sono obbligatori!");
                 return;
             }
 
             document.getElementById('loading-overlay').style.display = 'flex';
 
+            // Raccogli dati checklist per il DB
+            const datiRisposte = {};
+            for (const key in sezioni) {
+                datiRisposte[key] = sezioni[key].map((dom, i) => ({
+                    d: dom,
+                    r: document.querySelector(`input[name="${key}_q${i}"]:checked`).value,
+                    n: document.getElementById(`note_${key}_q${i}`).value
+                }));
+            }
+
             try {
-                const pdfBlob = await generaPDF();
-                const fileName = `verifica_${Date.now()}.pdf`;
-
-                // 1. Upload Storage
-                const { error: upErr } = await supabaseClient.storage
-                    .from('ai_verifiche')
-                    .upload(fileName, pdfBlob);
-                if (upErr) throw upErr;
-
-                const { data: urlData } = supabaseClient.storage.from('ai_verifiche').getPublicUrl(fileName);
-                const publicUrl = urlData.publicUrl;
-
-                // 2. Insert DB
-                await supabaseClient.from('verifiche_antincendio').insert([{
+                // 1. Salva dati su Supabase
+                const { data, error } = await supabaseClient.from('verifiche_antincendio').insert([{
                     operatore_1: op1,
-                    operatore_2: document.getElementById('operatore_2').value || null,
+                    operatore_2: op2 || "Nessuno",
                     data_ispezione: dataV,
-                    pdf_url: publicUrl,
-                    processato: true
-                }]);
+                    dati_checklist: datiRisposte, // Campo JSONB nel DB
+                    firma_1: sigPad1.toDataURL(),
+                    firma_2: sigPad2.isEmpty() ? null : sigPad2.toDataURL()
+                }]).select();
 
-                // 3. Mailto Link
-                const subject = encodeURIComponent(`Verifica Antincendio - ${op1}`);
-                const body = encodeURIComponent(`Buongiorno,\nin allegato il link al report della verifica antincendio eseguita il ${dataV}:\n\n${publicUrl}\n\nCordiali saluti.`);
-                
-                alert("✅ Report Salvato! Si aprirà la mail per l'invio.");
-                window.location.href = `mailto:sicurezza@pannellitermici.it?subject=${subject}&body=${body}`;
-                
+                if (error) throw error;
+
+                // 2. Chiama Edge Function per Generare PDF e Inviare Mail
+                // Sostituisci l'URL con la tua funzione reale
+                const response = await fetch(`${SB_URL}/functions/v1/send-email-report`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SB_KEY}`
+                    },
+                    body: JSON.stringify({
+                        record: data[0],
+                        email_destinatario: "geom.rip@gmail.com",
+                        foto: fotoChecklist // Passiamo le foto codificate in base64
+                    })
+                });
+
+                if(!response.ok) throw new Error("Errore durante l'invio della mail");
+
+                alert("✅ Verifica inviata con successo a geom.rip@gmail.com!");
                 tornaAllaHome();
+
             } catch (err) {
-                alert("Errore: " + err.message);
+                console.error(err);
+                alert("Si è verificato un errore: " + err.message);
             } finally {
                 document.getElementById('loading-overlay').style.display = 'none';
             }
         };
 
-        async function generaPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            let y = 20;
-
-            doc.setFontSize(18);
-            doc.setTextColor(0, 74, 153);
-            doc.text("REPORT VERIFICA ANTINCENDIO", 10, y);
-            y += 15;
-            doc.setFontSize(11);
-            doc.setTextColor(0);
-            doc.text(`Operatore: ${document.getElementById('operatore_1').value}`, 10, y);
-            doc.text(`Data: ${document.getElementById('dataVerifica').value}`, 140, y);
-            y += 10;
-
-            for (const [key, domande] of Object.entries(sezioni)) {
-                if (y > 250) { doc.addPage(); y = 20; }
-                doc.setFont(undefined, 'bold');
-                doc.text(key.toUpperCase().replace(/_/g, ' '), 10, y);
-                y += 7;
-                doc.setFont(undefined, 'normal');
-                domande.forEach((dom, i) => {
-                    const resp = document.querySelector(`input[name="${key}_q${i}"]:checked`)?.value || "N.D.";
-                    const nota = document.getElementById(`note_${key}_q${i}`).value;
-                    const text = doc.splitTextToSize(`${dom} [${resp}] ${nota ? '- Note: ' + nota : ''}`, 180);
-                    doc.text(text, 10, y);
-                    y += (text.length * 6) + 2;
-                });
-                y += 5;
-            }
-            doc.addPage();
-            doc.text("FIRME:", 10, 20);
-            if (!sigPad1.isEmpty()) doc.addImage(sigPad1.toDataURL(), 'PNG', 10, 30, 50, 25);
-            if (!sigPad2.isEmpty()) doc.addImage(sigPad2.toDataURL(), 'PNG', 80, 30, 50, 25);
-            return doc.output('blob');
-        }
-
         window.caricaStorico = async () => {
             document.getElementById('home-screen').style.display = 'none';
             document.getElementById('tab-storico').style.display = 'block';
             document.getElementById('btnHomeFisso').style.display = 'block';
+            
             const list = document.getElementById('lista-verifiche');
-            list.innerHTML = "Caricamento...";
-            const { data } = await supabaseClient.from('verifiche_antincendio').select('*').order('created_at', { ascending: false }).limit(10);
-            list.innerHTML = data ? data.map(v => `
-                <div class="card-verifica">
-                    <div style="display:flex; justify-content:space-between;">
-                        <span>${new Date(v.data_ispezione).toLocaleDateString()}</span>
-                        <a href="${v.pdf_url}" target="_blank">PDF 📄</a>
+            list.innerHTML = "Caricamento in corso...";
+
+            const { data, error } = await supabaseClient
+                .from('verifiche_antincendio')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(20);
+
+            if (error) {
+                list.innerHTML = "Errore nel caricamento dei dati.";
+            } else {
+                list.innerHTML = data.map(v => `
+                    <div class="card-verifica" style="border-left-color: #666;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <strong style="color:var(--primary)">${v.operatore_1}</strong>
+                            <span style="font-size:0.8rem">${new Date(v.data_ispezione).toLocaleDateString()}</span>
+                        </div>
+                        <div style="margin-top:10px;">
+                            <span style="font-size:0.7rem; color:#888;">ID: ${v.id}</span>
+                        </div>
                     </div>
-                    <small>${v.operatore_1}</small>
-                </div>`).join('') : "Nessun dato.";
+                `).join('');
+            }
         };
 
-        window.onload = () => { document.getElementById('dataVerifica').valueAsDate = new Date(); };
+        window.onload = () => {
+            document.getElementById('dataVerifica').valueAsDate = new Date();
+        };
     </script>
 </body>
 </html>
