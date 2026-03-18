@@ -199,7 +199,7 @@ window.inviaVerifica = async function() {
     btn.innerText = "🚀 INVIO IN CORSO...";
 
     try {
-        // 1. Impacchettiamo le risposte nel formato JSON che la tabella si aspetta
+        // 1. Raccogliamo tutte le risposte nell'oggetto JSON 'risposte'
         const risposteJSON = {};
         for (const [nomeSezione, domande] of Object.entries(sezioni)) {
             risposteJSON[nomeSezione] = domande.map((domanda, i) => {
@@ -210,46 +210,43 @@ window.inviaVerifica = async function() {
             });
         }
 
-        // 2. Prepariamo il record per il database (SOLO colonne esistenti)
+        // 2. Prepariamo il record per la NUOVA tabella
         const record = {
             operatore_1: op1,
             operatore_2: op2,
             data_ispezione: new Date(dataV).toISOString(),
-            risposte: risposteJSON,      // <-- Questo sostituisce estintori, idranti, ecc.
-            foto: fotoChecklist,
+            risposte: risposteJSON,      // <-- Questo va nella colonna 'risposte'
+            foto: fotoChecklist,         // <-- Questo va nella colonna 'foto'
             firma_base64: sigPad1.toDataURL(),
             firma_2_base64: sigPad2 && !sigPad2.isEmpty() ? sigPad2.toDataURL() : null,
-            logo_base64: document.getElementById('pt')?.src || "", // Prende il logo dall'anteprima
+            logo_base64: document.getElementById('pt')?.src || "",
             processato: false
         };
 
-        console.log("Invio record:", record);
-
-        // 3. Inserimento nel Database
+        // 3. Salvataggio nel database
         const { data: dbData, error: dbErr } = await supabaseClient
             .from('verifiche_antincendio')
             .insert([record])
             .select();
 
-        if (dbErr) throw dbErr;
+        if (dbErr) throw new Error("Errore Database: " + dbErr.message);
         
         const nuovoRecord = dbData[0];
 
-        // 4. Chiamata alla Edge Function corretta: hyper-function
+        // 4. Chiamata alla Edge Function: hyper-function
         const { data: funcData, error: funcErr } = await supabaseClient.functions.invoke('hyper-function', {
             body: { record: nuovoRecord }
         });
 
-        if (funcErr) throw funcErr;
+        if (funcErr) throw new Error("Errore Generazione PDF: " + funcErr.message);
 
-        alert("✅ Rapporto inviato con successo!");
+        alert("✅ Verificato e inviato al Geometra!");
         window.tornaAllaHome();
         setTimeout(() => { location.reload(); }, 500);
 
     } catch (err) {
-        console.error("Errore Dettagliato:", err);
-        // Se l'errore persiste, stampiamo esattamente cosa non piace al DB
-        alert("❌ Errore: " + (err.message || "Controlla la console"));
+        console.error(err);
+        alert("❌ Errore: " + err.message);
     } finally {
         btn.disabled = false;
         btn.innerText = "🚀 SALVA E INVIA A GEOM. RIPA";
