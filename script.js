@@ -1,6 +1,8 @@
 // --- CONFIGURAZIONE SUPABASE ---
 const SB_URL = "https://vnzrewcbnoqbqvzckome.supabase.co";
-const SB_KEY = "sb_publishable_Sq9txbu-PmKdbxETSx2cjw_WqWEFBPO"; 
+// NOTA: Usa la chiave JWT (service role o anon) dalla dashboard Supabase
+// La chiave publishable NON funziona per le edge function
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuenJld2Nibm9xYnF2emNrb21lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg1Nzg4OTksImV4cCI6MjA1NDE1NDg5OX0.8C6-YVbYm-yDk18xUf_T-N8v2V6pI7UoW3I5Y9-FpI4";
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
 // Variabili globali per firme e foto
