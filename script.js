@@ -286,7 +286,7 @@ window.caricaStorico = async function() {
                     <span style="font-size:0.8rem; color:#666;">${new Date(v.data_ispezione).toLocaleDateString()}</span>
                 </div>
                 <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-size:0.7rem; color:#999;">ID: ${v.id.substring(0,8)}...</span>
+                    <span style="font-size:0.7rem; color:#999;">ID: ${v.id}</span>
                     ${v.pdf_url ? `<a href="${v.pdf_url}" target="_blank" style="background:#004a99; color:white; padding:5px 10px; border-radius:5px; text-decoration:none; font-size:0.8rem;">VEDI PDF 📄</a>` : `<span style="font-size:0.8rem; color:orange;">In elaborazione...</span>`}
                 </div>
             </div>
