@@ -289,239 +289,242 @@
     </div>
 
     <script>
-        // --- CONFIGURAZIONE SUPABASE ---
-        const SB_URL = "https://vnzrewcbnoqbqvzckome.supabase.co";
-        const SB_KEY = "sb_publishable_Sq9txbu-PmKdbxETSx2cjw_WqWEFBPO"; 
-        const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+<script>
+    // --- CONFIGURAZIONE SUPABASE ---
+    const SB_URL = "https://vnzrewcbnoqbqvzckome.supabase.co";
+    const SB_KEY = "sb_publishable_Sq9txbu-PmKdbxETSx2cjw_WqWEFBPO"; 
+    const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
-        let sigPad1 = null;
-        let sigPad2 = null;
-        let fotoChecklist = {};
+    let sigPad1 = null;
+    let sigPad2 = null;
+    let fotoChecklist = {};
 
-        const sezioni = {
-            "estintori": [
-                "Gli estintori sono segnalati da apposita cartellonistica?",
-                "Gli estintori sono prontamente individuabili e facilmente accessibili?",
-                "Si è potuta riscontrare l’ASSENZA di anomalie e/o fattori di pericolo sugli estintori?",
-                "L’ultimo controllo sugli estintori è stato effettuato non oltre sei mesi fa?"
-            ],
-            "idranti": [
-                "Gli idranti sono segnalati da apposita cartellonistica?",
-                "Gli idranti sono prontamente individuabili e facilmente accessibili?",
-                "Si è potuta riscontrare l’ASSENZA di anomalie e/o fattori di pericolo sugli idranti?",
-                "L’ultimo controllo sugli idranti è stato effettuato non oltre sei mesi fa?"
-            ],
-            "luci_di_emergenza": [
-                "Le luci di emergenza sono correttamente funzionanti?",
-                "Si è potuta riscontrare l’ASSENZA di anomalie sulle luci di emergenza?"
-            ],
-            "impianto_irai": [
-                "Rilevatori e pulsanti manuali sono accessibili?",
-                "Assenza di anomalie sui dispositivi dell’IRAI?"
-            ],
-            "porte_tagliafuoco": [
-                "Le porte tagliafuoco sono segnalate e prive di ostacoli?",
-                "Le prove di apertura/chiusura hanno confermato il corretto funzionamento?",
-                "Si è potuta riscontrare l’ASSENZA di anomalie sulle porte?",
-                "Controllo semestrale ditta specializzata regolare?"
-            ],
-            "vie_di_esodo": [
-                "Vie di esodo e uscite segnalate?",
-                "Percorsi privi di materiali ingombranti?",
-                "Vie di esodo adeguatamente illuminate?",
-                "Assenza di anomalie sulle vie di esodo?"
-            ]
-        };
+    const sezioni = {
+        "estintori": [
+            "Gli estintori sono segnalati da apposita cartellonistica?",
+            "Gli estintori sono prontamente individuabili e facilmente accessibili?",
+            "Si è potuta riscontrare l’ASSENZA di anomalie e/o fattori di pericolo sugli estintori?",
+            "L’ultimo controllo sugli estintori è stato effettuato non oltre sei mesi fa?"
+        ],
+        "idranti": [
+            "Gli idranti sono segnalati da apposita cartellonistica?",
+            "Gli idranti sono prontamente individuabili e facilmente accessibili?",
+            "Si è potuta riscontrare l’ASSENZA di anomalie e/o fattori di pericolo sugli idranti?",
+            "L’ultimo controllo sugli idranti è stato effettuato non oltre sei mesi fa?"
+        ],
+        "luci_di_emergenza": [
+            "Le luci di emergenza sono correttamente funzionanti?",
+            "Si è potuta riscontrare l’ASSENZA di anomalie sulle luci di emergenza?"
+        ],
+        "impianto_irai": [
+            "Rilevatori e pulsanti manuali sono accessibili?",
+            "Assenza di anomalie sui dispositivi dell’IRAI?"
+        ],
+        "porte_tagliafuoco": [
+            "Le porte tagliafuoco sono segnalate e prive di ostacoli?",
+            "Le prove di apertura/chiusura hanno confermato il corretto funzionamento?",
+            "Si è potuta riscontrare l’ASSENZA di anomalie sulle porte?",
+            "Controllo semestrale ditta specializzata regolare?"
+        ],
+        "vie_di_esodo": [
+            "Vie di esodo e uscite segnalate?",
+            "Percorsi privi di materiali ingombranti?",
+            "Vie di esodo adeguatamente illuminate?",
+            "Assenza di anomalie sulle vie di esodo?"
+        ]
+    };
 
-        // --- NAVIGAZIONE ---
-        window.mostraApp = function() {
-            document.getElementById('home-screen').style.display = 'none';
-            document.getElementById('app-interface').style.display = 'block';
-            document.getElementById('btnHomeFisso').style.display = 'block';
-            fotoChecklist = {}; 
-            renderChecklist();
-            openTab(null, 'tab-info');
-        };
+    // --- NAVIGAZIONE ---
+    window.mostraApp = function() {
+        document.getElementById('home-screen').style.display = 'none';
+        document.getElementById('app-interface').style.display = 'block';
+        document.getElementById('btnHomeFisso').style.display = 'block';
+        fotoChecklist = {}; 
+        renderChecklist();
+        openTab(null, 'tab-info');
+    };
 
-        window.tornaAllaHome = () => location.reload();
+    window.tornaAllaHome = () => location.reload();
 
-        window.openTab = function(evt, tabName) {
-            document.querySelectorAll(".tab-content").forEach(t => t.style.display = "none");
-            document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-            
-            const target = document.getElementById(tabName);
-            if(target) target.style.display = "block";
-            
-            if (evt) evt.currentTarget.classList.add("active");
-            else {
-                const btnId = 'btn-' + tabName;
-                if(document.getElementById(btnId)) document.getElementById(btnId).classList.add("active");
-            }
-            
-            if (tabName === 'tab-invio') {
-                setTimeout(initSignatures, 300);
-            }
-        };
-
-        // --- CHECKLIST ---
-        function renderChecklist() {
-            const container = document.getElementById('checklist-container');
-            let html = '';
-            for (const [key, domande] of Object.entries(sezioni)) {
-                html += `<div class="sezione-titolo">${key.replace(/_/g, ' ').toUpperCase()}</div>`;
-                domande.forEach((domanda, i) => {
-                    const id = `${key}_q${i}`;
-                    html += `
-                        <div class="card-verifica">
-                            <p class="domanda-testo">${domanda}</p>
-                            <div class="opzioni">
-                                <label><input type="radio" name="${id}" value="SI" checked> ✅ SI</label>
-                                <label><input type="radio" name="${id}" value="NO"> ❌ NO</label>
-                            </div>
-                            <textarea id="note_${id}" class="area-note" placeholder="Note o anomalie..."></textarea>
-                            <button class="btn-foto" onclick="document.getElementById('file_${id}').click()">📸 SCATTA FOTO</button>
-                            <input type="file" id="file_${id}" hidden accept="image/*" capture="environment" onchange="window.gestisciFoto(event, '${id}')">
-                            <div id="preview_${id}" class="photo-preview">
-                                <img id="img_${id}">
-                            </div>
-                        </div>`;
-                });
-            }
-            container.innerHTML = html;
+    window.openTab = function(evt, tabName) {
+        document.querySelectorAll(".tab-content").forEach(t => t.style.display = "none");
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        
+        const target = document.getElementById(tabName);
+        if(target) target.style.display = "block";
+        
+        if (evt) evt.currentTarget.classList.add("active");
+        else {
+            const btnId = 'btn-' + tabName;
+            if(document.getElementById(btnId)) document.getElementById(btnId).classList.add("active");
         }
-
-        window.gestisciFoto = (e, id) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    fotoChecklist[id] = ev.target.result;
-                    document.getElementById(`img_${id}`).src = ev.target.result;
-                    document.getElementById(`preview_${id}`).style.display = "block";
-                };
-                reader.readAsDataURL(file);
-            }
-        };
-
-        // --- FIRME ---
-        function initSignatures() {
-            const canvas1 = document.getElementById('signature-pad-1');
-            const canvas2 = document.getElementById('signature-pad-2');
-
-            if (canvas1 && !sigPad1) {
-                sigPad1 = new SignaturePad(canvas1, { backgroundColor: 'rgb(255, 255, 255)' });
-                resizeCanvas(canvas1);
-            }
-            if (canvas2 && !sigPad2) {
-                sigPad2 = new SignaturePad(canvas2, { backgroundColor: 'rgb(255, 255, 255)' });
-                resizeCanvas(canvas2);
-            }
+        
+        if (tabName === 'tab-invio') {
+            setTimeout(initSignatures, 300);
         }
+    };
 
-        function resizeCanvas(canvas) {
-            const ratio = Math.max(window.devicePixelRatio || 1, 1);
-            canvas.width = canvas.offsetWidth * ratio;
-            canvas.height = canvas.offsetHeight * ratio;
-            canvas.getContext("2d").scale(ratio, ratio);
-        }
-
-        window.cancellaFirma = (n) => (n === 1 ? sigPad1 : sigPad2)?.clear();
-
-        // --- INVIO ---
-        window.inviaVerifica = async function() {
-            const btn = document.getElementById('btnInvia');
-            const op1 = document.getElementById('operatore_1').value;
-            const op2 = document.getElementById('operatore_2').value;
-            const dataV = document.getElementById('dataVerifica').value;
-
-            if (!op1 || sigPad1.isEmpty()) {
-                alert("Attenzione: Operatore 1 e Firma 1 sono obbligatori!");
-                return;
-            }
-
-            btn.disabled = true;
-            btn.innerText = "🚀 INVIO IN CORSO...";
-            document.getElementById('loading-overlay').style.display = 'flex';
-
-            try {
-                const preparaDatiSezione = (nomeSezione) => {
-                    let testo = "";
-                    sezioni[nomeSezione].forEach((domanda, i) => {
-                        const id = `${nomeSezione}_q${i}`;
-                        const risp = document.querySelector(`input[name="${id}"]:checked`)?.value || "SI";
-                        const nota = document.getElementById(`note_${id}`).value;
-                        testo += `${domanda}: ${risp}${nota ? ' (Nota: ' + nota + ')' : ''}\n`;
-                    });
-                    return testo;
-                };
-
-                const recordDaInviare = {
-                    operatore_1: op1,
-                    operatore_2: op2,
-                    data_ispezione: dataV,
-                    estintori: preparaDatiSezione('estintori'),
-                    idranti: preparaDatiSezione('idranti'),
-                    luci_emergenza: preparaDatiSezione('luci_di_emergenza'),
-                    irai: preparaDatiSezione('impianto_irai'),
-                    porte: preparaDatiSezione('porte_tagliafuoco'),
-                    vie_esodo: preparaDatiSezione('vie_di_esodo'),
-                    firma_base64: sigPad1.toDataURL(),
-                    firma_2_base64: sigPad2.isEmpty() ? null : sigPad2.toDataURL(),
-                    foto_checklist: fotoChecklist
-                };
-
-                const { data: dbData, error: dbErr } = await supabaseClient
-                    .from('verifiche_antincendio')
-                    .insert([recordDaInviare])
-                    .select();
-
-                if (dbErr) throw dbErr;
-
-                await supabaseClient.functions.invoke('antincendio', {
-                    body: { record: dbData[0] }
-                });
-
-                alert("✅ Rapporto inviato con successo!");
-                window.tornaAllaHome();
-
-            } catch (err) {
-                alert("❌ Errore: " + err.message);
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "🚀 SALVA E INVIA A GEOM. RIPA";
-                document.getElementById('loading-overlay').style.display = 'none';
-            }
-        };
-
-        window.caricaStorico = async () => {
-            document.getElementById('home-screen').style.display = 'none';
-            document.getElementById('tab-storico').style.display = 'block';
-            document.getElementById('btnHomeFisso').style.display = 'block';
-            const list = document.getElementById('lista-verifiche');
-            list.innerHTML = "Caricamento...";
-
-            const { data, error } = await supabaseClient
-                .from('verifiche_antincendio')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (error) list.innerHTML = "Errore storico.";
-            else {
-                list.innerHTML = data.map(v => `
-                    <div class="card-verifica" style="border-left-color: #666;">
-                        <div style="display:flex; justify-content:space-between;">
-                            <strong>${v.operatore_1} ${v.operatore_2 ? '+ ' + v.operatore_2 : ''}</strong>
-                            <span>${new Date(v.data_ispezione).toLocaleDateString()}</span>
+    // --- CHECKLIST ---
+    function renderChecklist() {
+        const container = document.getElementById('checklist-container');
+        let html = '';
+        for (const [key, domande] of Object.entries(sezioni)) {
+            html += `<div class="sezione-titolo">${key.replace(/_/g, ' ').toUpperCase()}</div>`;
+            domandaForEach = domande.forEach((domanda, i) => {
+                const id = `${key}_q${i}`;
+                html += `
+                    <div class="card-verifica">
+                        <p class="domanda-testo">${domanda}</p>
+                        <div class="opzioni">
+                            <label><input type="radio" name="${id}" value="SI" checked> ✅ SI</label>
+                            <label><input type="radio" name="${id}" value="NO"> ❌ NO</label>
                         </div>
-                        <a href="${v.pdf_url}" target="_blank" style="color:var(--primary); display:block; margin-top:10px;">Apri PDF 📄</a>
-                    </div>
-                `).join('');
-            }
-        };
+                        <textarea id="note_${id}" class="area-note" placeholder="Note o anomalie..."></textarea>
+                        <button class="btn-foto" onclick="document.getElementById('file_${id}').click()">📸 SCATTA FOTO</button>
+                        <input type="file" id="file_${id}" hidden accept="image/*" capture="environment" onchange="window.gestisciFoto(event, '${id}')">
+                        <div id="preview_${id}" class="photo-preview">
+                            <img id="img_${id}">
+                        </div>
+                    </div>`;
+            });
+        }
+        container.innerHTML = html;
+    }
 
-        window.onload = () => {
-            document.getElementById('dataVerifica').valueAsDate = new Date();
-        };
+    window.gestisciFoto = (e, id) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                fotoChecklist[id] = ev.target.result;
+                document.getElementById(`img_${id}`).src = ev.target.result;
+                document.getElementById(`preview_${id}`).style.display = "block";
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    // --- FIRME ---
+    function initSignatures() {
+        const canvas1 = document.getElementById('signature-pad-1');
+        const canvas2 = document.getElementById('signature-pad-2');
+
+        if (canvas1 && !sigPad1) {
+            sigPad1 = new SignaturePad(canvas1, { backgroundColor: 'rgb(255, 255, 255)' });
+            resizeCanvas(canvas1);
+        }
+        if (canvas2 && !sigPad2) {
+            sigPad2 = new SignaturePad(canvas2, { backgroundColor: 'rgb(255, 255, 255)' });
+            resizeCanvas(canvas2);
+        }
+    }
+
+    function resizeCanvas(canvas) {
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        canvas.width = canvas.offsetWidth * ratio;
+        canvas.height = canvas.offsetHeight * ratio;
+        canvas.getContext("2d").scale(ratio, ratio);
+    }
+
+    window.cancellaFirma = (n) => (n === 1 ? sigPad1 : sigPad2)?.clear();
+
+    // --- INVIO CORRETTO ---
+    window.inviaVerifica = async function() {
+        const btn = document.getElementById('btnInvia');
+        const op1 = document.getElementById('operatore_1').value;
+        const op2 = document.getElementById('operatore_2').value;
+        const dataV = document.getElementById('dataVerifica').value;
+
+        if (!op1 || sigPad1.isEmpty()) {
+            alert("Attenzione: Operatore 1 e Firma 1 sono obbligatori!");
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerText = "🚀 INVIO IN CORSO...";
+        document.getElementById('loading-overlay').style.display = 'flex';
+
+        try {
+            // Raccogliamo le risposte in un oggetto JSON unico
+            const risposteJSON = {};
+            for (const [key, domande] of Object.entries(sezioni)) {
+                risposteJSON[key] = domande.map((domanda, i) => {
+                    const id = `${key}_q${i}`;
+                    return {
+                        domanda: domanda,
+                        risposta: document.querySelector(`input[name="${id}"]:checked`)?.value || "SI",
+                        nota: document.getElementById(`note_${id}`).value
+                    };
+                });
+            }
+
+            const recordDaInviare = {
+                operatore_1: op1,
+                operatore_2: op2,
+                data_ispezione: dataV,
+                risposte: risposteJSON,      // La colonna corretta del database
+                foto: fotoChecklist,         // La colonna corretta del database
+                firma_base64: sigPad1.toDataURL(),
+                firma_2_base64: sigPad2.isEmpty() ? null : sigPad2.toDataURL(),
+                logo_base64: "", // Puoi aggiungere il base64 del logo qui se serve
+                processato: false
+            };
+
+            const { data: dbData, error: dbErr } = await supabaseClient
+                .from('verifiche_antincendio')
+                .insert([recordDaInviare])
+                .select();
+
+            if (dbErr) throw dbErr;
+
+            // Chiamata alla tua funzione hyper-function
+            await supabaseClient.functions.invoke('hyper-function', {
+                body: { record: dbData[0] }
+            });
+
+            alert("✅ Rapporto inviato con successo!");
+            window.tornaAllaHome();
+
+        } catch (err) {
+            console.error(err);
+            alert("❌ Errore: " + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "🚀 SALVA E INVIA A GEOM. RIPA";
+            document.getElementById('loading-overlay').style.display = 'none';
+        }
+    };
+
+    window.caricaStorico = async () => {
+        document.getElementById('home-screen').style.display = 'none';
+        document.getElementById('tab-storico').style.display = 'block';
+        document.getElementById('btnHomeFisso').style.display = 'block';
+        const list = document.getElementById('lista-verifiche');
+        list.innerHTML = "Caricamento...";
+
+        const { data, error } = await supabaseClient
+            .from('verifiche_antincendio')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) list.innerHTML = "Errore storico.";
+        else {
+            list.innerHTML = data.map(v => `
+                <div class="card-verifica" style="border-left-color: #666;">
+                    <div style="display:flex; justify-content:space-between;">
+                        <strong>${v.operatore_1} ${v.operatore_2 ? '+ ' + v.operatore_2 : ''}</strong>
+                        <span>${new Date(v.data_ispezione).toLocaleDateString()}</span>
+                    </div>
+                    ${v.pdf_url ? `<a href="${v.pdf_url}" target="_blank" style="color:var(--primary); display:block; margin-top:10px;">Apri PDF 📄</a>` : '<span style="color:orange">PDF in generazione...</span>'}
+                </div>
+            `).join('');
+        }
+    };
+
+    window.onload = () => {
+        document.getElementById('dataVerifica').valueAsDate = new Date();
+    };
+</script>
     </script>
 </body>
 </html>
