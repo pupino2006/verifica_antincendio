@@ -277,7 +277,7 @@
             </div>
             <button class="btn-clear" onclick="cancellaFirma(2)">CANCELLA FIRMA 2</button>
             
-            <button id="btnInvia" class="btn-main" style="background: var(--success); margin-top: 50px;" onclick="inviaVerifica()">🚀 SALVA E INVIA A GEOM. RIPA</button>
+            <button id="btnInvia" class="btn-main" style="background: var(--success); margin-top: 50px;" onclick="inviaVerifica()">🚀 SALVA E INVIA</button>
             <p style="font-size: 11px; text-align: center; color: #888; margin-top: 15px;">Il PDF verrà inviato automaticamente a geom.rip@gmail.com</p>
         </div>
     </div>
@@ -299,6 +299,23 @@
     let sigPad1 = null;
     let sigPad2 = null;
     let fotoChecklist = {};
+    let logoBase64 = "";
+
+    // Carica logo come base64 all'avvio
+    window.addEventListener('DOMContentLoaded', () => {
+        const logoImg = new Image();
+        logoImg.crossOrigin = "anonymous";
+        logoImg.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = logoImg.width;
+            canvas.height = logoImg.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(logoImg, 0, 0);
+            logoBase64 = canvas.toDataURL('image/png');
+            console.log("Logo caricato: " + logoBase64.substring(0, 50) + "...");
+        };
+        logoImg.src = 'pt.png';
+    });
 
     const sezioni = {
         "estintori": [
@@ -467,7 +484,7 @@
                 foto: fotoChecklist,         // La colonna corretta del database
                 firma_base64: sigPad1.toDataURL(),
                 firma_2_base64: sigPad2.isEmpty() ? null : sigPad2.toDataURL(),
-                logo_base64: "", // Puoi aggiungere il base64 del logo qui se serve
+                logo_base64: logoBase64,
                 processato: false
             };
 
