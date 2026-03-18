@@ -191,7 +191,7 @@ window.inviaVerifica = async function() {
     const dataV = document.getElementById('dataVerifica').value;
 
     if (!op1 || sigPad1.isEmpty()) {
-        alert("Attenzione: Operatore 1 e Firma 1 sono obbligatori!");
+        alert("Attenzione: Operatore 1 e Firma sono obbligatori!");
         return;
     }
 
@@ -199,7 +199,7 @@ window.inviaVerifica = async function() {
     btn.innerText = "🚀 INVIO IN CORSO...";
 
     try {
-        // 1. Raccogliamo tutte le risposte in un unico oggetto JSON
+        // 1. Impacchettiamo le risposte nel formato JSON che la tabella si aspetta
         const risposteJSON = {};
         for (const [nomeSezione, domande] of Object.entries(sezioni)) {
             risposteJSON[nomeSezione] = domande.map((domanda, i) => {
@@ -210,55 +210,46 @@ window.inviaVerifica = async function() {
             });
         }
 
-        // 2. Prepariamo il Logo
-        let logoBase64 = "";
-        const imgElement = document.getElementById('pt'); // Assicurati che l'id sia corretto
-        if (imgElement) {
-            const canvas = document.createElement("canvas");
-            canvas.width = imgElement.naturalWidth;
-            canvas.height = imgElement.naturalHeight;
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(imgElement, 0, 0);
-            logoBase64 = canvas.toDataURL("image/png");
-        }
-
-        // 3. Creiamo il record ESATTAMENTE per la nuova tabella
+        // 2. Prepariamo il record per il database (SOLO colonne esistenti)
         const record = {
             operatore_1: op1,
             operatore_2: op2,
             data_ispezione: new Date(dataV).toISOString(),
-            risposte: risposteJSON,      // Questa è la colonna corretta ora
+            risposte: risposteJSON,      // <-- Questo sostituisce estintori, idranti, ecc.
             foto: fotoChecklist,
             firma_base64: sigPad1.toDataURL(),
             firma_2_base64: sigPad2 && !sigPad2.isEmpty() ? sigPad2.toDataURL() : null,
-            logo_base64: logoBase64,
+            logo_base64: document.getElementById('pt')?.src || "", // Prende il logo dall'anteprima
             processato: false
         };
 
-        // 4. Salvataggio nel database
+        console.log("Invio record:", record);
+
+        // 3. Inserimento nel Database
         const { data: dbData, error: dbErr } = await supabaseClient
             .from('verifiche_antincendio')
             .insert([record])
             .select();
 
-        if (dbErr) throw new Error("Errore DB: " + dbErr.message);
+        if (dbErr) throw dbErr;
         
         const nuovoRecord = dbData[0];
 
-        // 5. Chiamata alla Edge Function (usando il tuo nome: quick-processor)
-        const { data: funcData, error: funcErr } = await supabaseClient.functions.invoke('quick-processor', {
+        // 4. Chiamata alla Edge Function corretta: hyper-function
+        const { data: funcData, error: funcErr } = await supabaseClient.functions.invoke('hyper-function', {
             body: { record: nuovoRecord }
         });
 
-        if (funcErr) throw new Error("Errore Funzione: " + funcErr.message);
+        if (funcErr) throw funcErr;
 
-        alert("🚀 Rapporto salvato e inviato correttamente!");
+        alert("✅ Rapporto inviato con successo!");
         window.tornaAllaHome();
         setTimeout(() => { location.reload(); }, 500);
 
     } catch (err) {
-        console.error(err);
-        alert("❌ Errore: " + err.message);
+        console.error("Errore Dettagliato:", err);
+        // Se l'errore persiste, stampiamo esattamente cosa non piace al DB
+        alert("❌ Errore: " + (err.message || "Controlla la console"));
     } finally {
         btn.disabled = false;
         btn.innerText = "🚀 SALVA E INVIA A GEOM. RIPA";
