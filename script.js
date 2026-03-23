@@ -361,3 +361,33 @@ window.addEventListener('load', () => {
         document.getElementById('dataVerifica').valueAsDate = new Date();
     }
 });
+
+// --- ESPORTAZIONE TABELLE IN EXCEL ---
+window.esportaTabella = async function(tipo) {
+    const nomi = {
+        'antincendio': 'Antincendio',
+        'primo_soccorso': 'Primo Soccorso',
+        'entrambe': 'Entrambe le tabelle'
+    };
+    
+    const conferma = confirm(`Vuoi esportare la tabella ${nomi[tipo]} e inviarla per email a geom.rip@gmail.com?`);
+    if (!conferma) return;
+    
+    try {
+        btn = document.createElement('button');
+        btn.innerText = '⏳ Esportazione in corso...';
+        btn.disabled = true;
+        alert('⏳ Esportazione in corso. Riceverai una email con il file Excel.');
+        
+        const { data, error } = await supabaseClient.functions.invoke('export-excel', {
+            body: { tipo_tabella: tipo }
+        });
+        
+        if (error) throw error;
+        
+        alert('✅ Esportazione completata! Controlla la tua email.');
+    } catch (err) {
+        console.error(err);
+        alert('❌ Errore: ' + err.message);
+    }
+};
