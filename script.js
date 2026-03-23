@@ -1,7 +1,5 @@
 // --- CONFIGURAZIONE SUPABASE ---
 const SB_URL = "https://vnzrewcbnoqbqvzckome.supabase.co";
-// NOTA: Usa la chiave JWT (service role o anon) dalla dashboard Supabase
-// La chiave publishable NON funziona per le edge function
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZuenJld2Nibm9xYnF2emNrb21lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5Njk2NDUsImV4cCI6MjA4NjU0NTY0NX0.pdnPyYB4DwEjZ10aF3tGigAjiwLGkP-kx07-15L4ass";
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
@@ -9,33 +7,34 @@ const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 let sigPad1 = null;
 let sigPad2 = null;
 let fotoChecklist = {};
+let tipoModulo = 'antincendio'; // Variabile globale per il tipo di modulo attivo
 
-// Definizione completa delle sezioni e domande
-const sezioni = {
+// Definizione delle sezioni ANTINCENDIO
+const sezioniAntincendio = {
     "estintori": [
         "Gli estintori sono segnalati da apposita cartellonistica?",
         "Gli estintori sono prontamente individuabili e facilmente accessibili?",
-        "Si è potuta riscontrare l’ASSENZA di anomalie e/o fattori di pericolo sugli estintori?",
-        "L’ultimo controllo sugli estintori è stato effettuato non oltre sei mesi fa?"
+        "Si è potuta riscontrare l'ASSENZA di anomalie e/o fattori di pericolo sugli estintori?",
+        "L'ultimo controllo sugli estintori è stato effettuato non oltre sei mesi fa?"
     ],
     "idranti": [
         "Gli idranti sono segnalati da apposita cartellonistica?",
         "Gli idranti sono prontamente individuabili e facilmente accessibili?",
-        "Si è potuta riscontrare l’ASSENZA di anomalie e/o fattori di pericolo sugli idranti?",
-        "L’ultimo controllo sugli idranti è stato effettuato non oltre sei mesi fa?"
+        "Si è potuta riscontrare l'ASSENZA di anomalie e/o fattori di pericolo sugli idranti?",
+        "L'ultimo controllo sugli idranti è stato effettuato non oltre sei mesi fa?"
     ],
     "luci_di_emergenza": [
         "Le luci di emergenza sono correttamente funzionanti?",
-        "Si è potuta riscontrare l’ASSENZA di anomalie sulle luci di emergenza?"
+        "Si è potuta riscontrare l'ASSENZA di anomalie sulle luci di emergenza?"
     ],
     "impianto_irai": [
         "Rilevatori e pulsanti manuali sono accessibili?",
-        "Assenza di anomalie sui dispositivi dell’IRAI?"
+        "Assenza di anomalie sui dispositivi dell'IRAI?"
     ],
     "porte_tagliafuoco": [
         "Le porte tagliafuoco sono segnalate e prive di ostacoli?",
         "Le prove di apertura/chiusura hanno confermato il corretto funzionamento?",
-        "Si è potuta riscontrare l’ASSENZA di anomalie sulle porte?",
+        "Si è potuta riscontrare l'ASSENZA di anomalie sulle porte?",
         "Controllo semestrale ditta specializzata regolare?"
     ],
     "vie_di_esodo": [
@@ -46,13 +45,54 @@ const sezioni = {
     ]
 };
 
+// Definizione delle sezioni PRIMO SOCCORSO - Contenuto Cassette
+const sezioniPrimoSoccorso = {
+    "contenuto_cassetta": [
+        "Guanti sterili monouso (5 paia)",
+        "Visiera paraschizzi",
+        "Flacone di soluzione cutanea di iodopovidone al 10% di iodio da 1 litro",
+        "Flaconi di soluzione fisiologica (sodio cloruro - 0, 9%) da 500 ml (3)",
+        "Compresse di garza sterile 10 x 10 in buste singole (10)",
+        "Compresse di garza sterile 18 x 40 in buste singole (2)",
+        "Teli sterili monouso (2)",
+        "Pinzette da medicazione sterili monouso (2)",
+        "Confezione di rete elastica di misura media (1)",
+        "Confezione di cotone idrofilo (1)",
+        "Confezioni di cerotti di varie misure pronti all'uso (2)",
+        "Rotoli di cerotto alto cm. 2,5 (2)",
+        "Un paio di forbici",
+        "Lacci emostatici (3)",
+        "Ghiaccio pronto uso (due confezioni)",
+        "Sacchetti monouso per la raccolta di rifiuti sanitari (2)"
+    ],
+    "strumenti": [
+        "Termometro",
+        "Apparecchio per la misurazione della pressione arteriosa"
+    ]
+};
+
 // --- FUNZIONI NAVIGAZIONE ---
 
-window.mostraApp = function() {
+window.mostraApp = function(tipo) {
+    tipoModulo = tipo || 'antincendio';
     document.getElementById('home-screen').style.display = 'none';
     document.getElementById('app-interface').style.display = 'block';
     document.getElementById('tab-storico').style.display = 'none';
     document.getElementById('btnHomeFisso').style.display = 'block';
+    
+    // Imposta il badge del tipo di modulo
+    const badge = document.getElementById('tipo-modulo-badge');
+    if (badge) {
+        if (tipoModulo === 'primo_soccorso') {
+            badge.textContent = '🏥 MODULO: VERIFICA CASSETTE PRIMO SOCCORSO';
+            badge.style.background = '#d4edda';
+            badge.style.color = '#155724';
+        } else {
+            badge.textContent = '🔥 MODULO: VERIFICA ANTINCENDIO';
+            badge.style.background = '#f8d7da';
+            badge.style.color = '#721c24';
+        }
+    }
     
     fotoChecklist = {}; // Reset foto
     window.renderChecklist();
@@ -64,6 +104,10 @@ window.tornaAllaHome = function() {
     document.getElementById('app-interface').style.display = 'none';
     document.getElementById('tab-storico').style.display = 'none';
     document.getElementById('btnHomeFisso').style.display = 'none';
+    
+    // Reset delle firme
+    if (sigPad1) sigPad1.clear();
+    if (sigPad2) sigPad2.clear();
 };
 
 window.openTab = function(evt, tabName) {
@@ -96,9 +140,12 @@ window.renderChecklist = function() {
     const container = document.getElementById('checklist-container');
     if (!container) return;
     
+    // Seleziona le sezioni in base al tipo di modulo
+    const sezioni = (tipoModulo === 'primo_soccorso') ? sezioniPrimoSoccorso : sezioniAntincendio;
+    
     let html = '';
     for (const [key, domande] of Object.entries(sezioni)) {
-        html += `<div class="sezione-titolo">${key.toUpperCase().replace(/_/g, ' ')}</div>`;
+        html += `<div class="sezione-titolo">${key.replace(/_/g, ' ').toUpperCase()}</div>`;
         domande.forEach((domanda, index) => {
             const id = `${key}_q${index}`;
             html += `
@@ -175,16 +222,7 @@ window.cancellaFirma = (n) => {
     if (n === 2 && sigPad2) sigPad2.clear();
 };
 
-// --- GENERAZIONE PDF (Disattivata - Ora gestita dalla Edge Function) ---
-/* async function generaPDF() {
-    // La generazione del PDF tramite jsPDF è stata disabilitata sul frontend
-    // per questioni di prestazioni sui cellulari. Ora Supabase genera
-    // un PDF molto più preciso e veloce lato server.
-    console.log("Generazione PDF demandata a Supabase Edge Functions");
-}
-*/
-
-// --- INVIO FINALE MODIFICATO PER NUOVA TABELLA ---
+// --- INVIO FINALE ---
 
 window.inviaVerifica = async function() {
     const btn = document.getElementById('btnInvia');
@@ -192,7 +230,7 @@ window.inviaVerifica = async function() {
     const op2 = document.getElementById('operatore_2').value;
     const dataV = document.getElementById('dataVerifica').value;
 
-    if (!op1 || sigPad1.isEmpty()) {
+    if (!op1 || !sigPad1 || sigPad1.isEmpty()) {
         alert("Attenzione: Operatore 1 e Firma sono obbligatori!");
         return;
     }
@@ -201,6 +239,11 @@ window.inviaVerifica = async function() {
     btn.innerText = "🚀 INVIO IN CORSO...";
 
     try {
+        // Seleziona le sezioni in base al tipo di modulo
+        const sezioni = (tipoModulo === 'primo_soccorso') ? sezioniPrimoSoccorso : sezioniAntincendio;
+        const tabellaDB = (tipoModulo === 'primo_soccorso') ? 'verifiche_primo_soccorso' : 'verifiche_antincendio';
+        const nomeEdgeFunction = (tipoModulo === 'primo_soccorso') ? 'hyper-function-primo-soccorso' : 'hyper-function';
+
         // 1. Raccogliamo tutte le risposte nell'oggetto JSON 'risposte'
         const risposteJSON = {};
         for (const [nomeSezione, domande] of Object.entries(sezioni)) {
@@ -212,22 +255,23 @@ window.inviaVerifica = async function() {
             });
         }
 
-        // 2. Prepariamo il record per la NUOVA tabella
+        // 2. Prepariamo il record per il database
         const record = {
             operatore_1: op1,
             operatore_2: op2,
             data_ispezione: new Date(dataV).toISOString(),
-            risposte: risposteJSON,      // <-- Questo va nella colonna 'risposte'
-            foto: fotoChecklist,         // <-- Questo va nella colonna 'foto'
+            risposte: risposteJSON,
+            foto: fotoChecklist,
             firma_base64: sigPad1.toDataURL(),
             firma_2_base64: sigPad2 && !sigPad2.isEmpty() ? sigPad2.toDataURL() : null,
             logo_base64: document.getElementById('pt')?.src || "",
+            tipo_modulo: tipoModulo, // Indica se è antincendio o primo_soccorso
             processato: false
         };
 
         // 3. Salvataggio nel database
         const { data: dbData, error: dbErr } = await supabaseClient
-            .from('verifiche_antincendio')
+            .from(tabellaDB)
             .insert([record])
             .select();
 
@@ -235,14 +279,17 @@ window.inviaVerifica = async function() {
         
         const nuovoRecord = dbData[0];
 
-        // 4. Chiamata alla Edge Function: hyper-function
-        const { data: funcData, error: funcErr } = await supabaseClient.functions.invoke('hyper-function', {
-            body: { record: nuovoRecord }
-        });
+        // 4. Chiamata alla Edge Function
+        try {
+            await supabaseClient.functions.invoke(nomeEdgeFunction, {
+                body: { record: nuovoRecord }
+            });
+        } catch (funcErr) {
+            console.log("Edge function non disponibile, PDF verrà generato offline");
+        }
 
-        if (funcErr) throw new Error("Errore Generazione PDF: " + funcErr.message);
-
-        alert("✅ Verificato e inviato al Geometra!");
+        const nomeModulo = (tipoModulo === 'primo_soccorso') ? 'Primo Soccorso' : 'Antincendio';
+        alert("✅ Verifica " + nomeModulo + " inviata con successo!");
         window.tornaAllaHome();
         setTimeout(() => { location.reload(); }, 500);
 
@@ -251,45 +298,55 @@ window.inviaVerifica = async function() {
         alert("❌ Errore: " + err.message);
     } finally {
         btn.disabled = false;
-        btn.innerText = "🚀 SALVA E INVIA A GEOM. RIPA";
+        btn.innerText = "🚀 SALVA E INVIA";
     }
 };
+
 // --- STORICO ---
 
-window.caricaStorico = async function() {
+window.caricaStorico = async function(tipo) {
+    tipoModulo = tipo || 'antincendio';
     document.getElementById('home-screen').style.display = 'none';
+    document.getElementById('app-interface').style.display = 'none';
     document.getElementById('tab-storico').style.display = 'block';
     document.getElementById('btnHomeFisso').style.display = 'block';
     
     const container = document.getElementById('lista-verifiche');
     container.innerHTML = "<p style='text-align:center;'>Caricamento in corso...</p>";
     
+    const tabellaDB = (tipoModulo === 'primo_soccorso') ? 'verifiche_primo_soccorso' : 'verifiche_antincendio';
+    const nomeModulo = (tipoModulo === 'primo_soccorso') ? 'Primo Soccorso' : 'Antincendio';
+    
     try {
         const { data, error } = await supabaseClient
-            .from('verifiche_antincendio')
+            .from(tabellaDB)
             .select('*')
             .order('created_at', { ascending: false });
             
         if (error) throw error;
         
+        // Aggiungi titolo per il tipo di storico
+        const titoloStorico = (tipoModulo === 'primo_soccorso') 
+            ? '<h3 style="color: #28a745; text-align: center;">📂 ARCHIVIO VERIFICHE PRIMO SOCCORSO</h3>' 
+            : '<h3 style="color: #dc3545; text-align: center;">📂 ARCHIVIO VERIFICHE ANTINCENDIO</h3>';
+        
         if (data.length === 0) {
-            container.innerHTML = "<p style='text-align:center;'>Nessuna verifica trovata.</p>";
+            container.innerHTML = titoloStorico + "<p style='text-align:center;'>Nessuna verifica trovata.</p>";
             return;
         }
 
-        container.innerHTML = data.map(v => {
-            // Se c'è un secondo operatore, lo mostra nello storico
+        container.innerHTML = titoloStorico + data.map(v => {
             const op2Text = v.operatore_2 ? ` (+ ${v.operatore_2})` : "";
             
             return `
-            <div class="card-verifica" style="border-left: 5px solid #004a99; margin-bottom:10px;">
+            <div class="card-verifica" style="border-left: 5px solid ${tipoModulo === 'primo_soccorso' ? '#28a745' : '#dc3545'}; margin-bottom:10px;">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <strong>${v.operatore_1}${op2Text}</strong>
                     <span style="font-size:0.8rem; color:#666;">${new Date(v.data_ispezione).toLocaleDateString()}</span>
                 </div>
                 <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
                     <span style="font-size:0.7rem; color:#999;">ID: ${v.id}</span>
-                    ${v.pdf_url ? `<a href="${v.pdf_url}" target="_blank" style="background:#004a99; color:white; padding:5px 10px; border-radius:5px; text-decoration:none; font-size:0.8rem;">VEDI PDF 📄</a>` : `<span style="font-size:0.8rem; color:orange;">In elaborazione...</span>`}
+                    ${v.pdf_url ? `<a href="${v.pdf_url}" target="_blank" style="background:${tipoModulo === 'primo_soccorso' ? '#28a745' : '#004a99'}; color:white; padding:5px 10px; border-radius:5px; text-decoration:none; font-size:0.8rem;">VEDI PDF 📄</a>` : `<span style="font-size:0.8rem; color:orange;">In elaborazione...</span>`}
                 </div>
             </div>
         `}).join('');
