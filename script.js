@@ -265,7 +265,7 @@ window.inviaVerifica = async function() {
             foto: fotoChecklist,
             firma_base64: sigPad1.toDataURL(),
             firma_2_base64: sigPad2 && !sigPad2.isEmpty() ? sigPad2.toDataURL() : null,
-            logo_base64: document.getElementById('pt')?.src || "",
+            logo_base64: logoBase64 || "",
             processato: false
         };
 

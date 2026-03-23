@@ -308,18 +308,27 @@
 
     // Carica logo come base64 all'avvio
     window.addEventListener('DOMContentLoaded', () => {
-        const logoImg = new Image();
-        logoImg.crossOrigin = "anonymous";
-        logoImg.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = logoImg.width;
-            canvas.height = logoImg.height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(logoImg, 0, 0);
-            logoBase64 = canvas.toDataURL('image/png');
-            console.log("Logo caricato: " + logoBase64.substring(0, 50) + "...");
-        };
-        logoImg.src = 'pt.png';
+        const logoImg = document.getElementById('mainLogo');
+        if (logoImg) {
+            // Se è già un data URL, usa quello
+            if (logoImg.src.startsWith('data:')) {
+                logoBase64 = logoImg.src;
+            } else {
+                // Altrimenti carica l'immagine
+                const tempImg = new Image();
+                tempImg.crossOrigin = "anonymous";
+                tempImg.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = tempImg.width;
+                    canvas.height = tempImg.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(tempImg, 0, 0);
+                    logoBase64 = canvas.toDataURL('image/png');
+                    console.log("Logo caricato: " + logoBase64.substring(0, 50) + "...");
+                };
+                tempImg.src = logoImg.src;
+            }
+        }
     });
 </script>
 </body>
