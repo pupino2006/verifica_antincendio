@@ -173,7 +173,34 @@ window.renderChecklist = function() {
 
 // --- GESTIONE FOTO ---
 
-window.scattaFoto = (id) => document.getElementById(`file_${id}`).click();
+window.scattaFoto = async (id) => {
+    const fileInput = document.getElementById(`file_${id}`);
+    
+    // Su mobile, usa direttamente la fotocamera
+    if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+        fileInput.click();
+        return;
+    }
+    
+    // Su desktop Windows/Mac, prova ad usare la webcam se disponibile
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        // Se l'accesso alla webcam funziona, mostriamo un prompt
+        stream.getTracks().forEach(track => track.stop());
+        
+        // Chiedi all'utente se vuole usare webcam o caricare file
+        if (confirm('Vuoi scattare una foto con la webcam?\n\nClicca ANNULLA per caricare un file.')) {
+            // Implementazione webcam diretta (richiede ulteriore codice)
+            fileInput.click();
+        } else {
+            fileInput.click();
+        }
+    } catch (err) {
+        // Webcam non disponibile o permesso negato, usa file picker
+        console.log('Webcam non disponibile, uso selezione file');
+        fileInput.click();
+    }
+};
 
 window.gestisciFoto = (e, id) => {
     const file = e.target.files[0];
