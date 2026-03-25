@@ -29,15 +29,15 @@ serve(async (req) => {
 
     console.log("Elaborazione record ID:", record.id)
 
-    // Determina il tipo di verifica dal nome della tabella nel record
-    // Nota: se il record non ha la tabella sorgente, usa 'antincendio' come default
-    const tipoVerifica = record.tipo_modulo || 'antincendio';
-    const isPrimoSoccorso = tipoVerifica === 'primo_soccorso';
+    // Determina il tipo di verifica dalla struttura delle risposte
+    // Se contiene 'contenuto_cassetta' o 'strumenti' è Primo Soccorso
+    const risposte = record.risposte || {};
+    const hasContenutoCassetta = risposte.contenuto_cassetta || risposte.strumenti;
+    const isPrimoSoccorso = !!hasContenutoCassetta;
     
     // Determina la tabella corretta per l'update
     const tabellaUpdate = isPrimoSoccorso ? 'verifiche_primo_soccorso' : 'verifiche_antincendio';
     const nomeVerbale = isPrimoSoccorso ? 'verbale_primo_soccorso_' : 'verbale_';
-    const titoloReport = isPrimoSoccorso ? 'REPORT VERIFICA CASSETTE PRIMO SOCCORSO' : 'REPORT VERIFICA ANTINCENDIO';
     const colorePrimario = isPrimoSoccorso ? [40, 167, 69] : [0, 74, 153]; // Verde o Blu
 
     // Inizia la creazione del PDF
@@ -55,48 +55,44 @@ serve(async (req) => {
     }
 
     // ==========================================
-    // HEADER SPECIFICO PER PRIMO SOCCORSO
+    // HEADER SISTEMA GESTIONE QUALITA' PER ENTRAMBI
     // ==========================================
+    // Riga superiore: SISTEMA GESTIONE QUALITA' a sinistra, MODULO a destra
+    doc.setFontSize(10)
+    doc.setTextColor(0, 74, 153)
+    doc.text("SISTEMA GESTIONE QUALITA':", 15, y)
+    doc.setFont("helvetica", "bold")
+    doc.text("MODULO", 190, y, { align: "right" })
+    y += 8
+    
+    // Linea separatrice
+    doc.setDrawColor(0, 74, 153)
+    doc.setLineWidth(0.5)
+    doc.line(15, y, 195, y)
+    y += 8
+    
+    // Titolo principale (differente per tipo)
+    doc.setFontSize(16)
+    doc.setFont("helvetica", "bold")
+    doc.setTextColor(0, 74, 153)
     if (isPrimoSoccorso) {
-      // Riga superiore: SISTEMA GESTIONE QUALITA' a sinistra, MODULO a destra
-      doc.setFontSize(10)
-      doc.setTextColor(0, 74, 153)
-      doc.text("SISTEMA GESTIONE QUALITA':", 15, y)
-      doc.setFont("helvetica", "bold")
-      doc.text("MODULO", 190, y, { align: "right" })
-      y += 8
-      
-      // Linea separatrice
-      doc.setDrawColor(0, 74, 153)
-      doc.setLineWidth(0.5)
-      doc.line(15, y, 195, y)
-      y += 8
-      
-      // Titolo principale
-      doc.setFontSize(16)
-      doc.setFont("helvetica", "bold")
-      doc.setTextColor(0, 74, 153)
       doc.text("REGISTRO CASSETTE DI PRIMO SOCCORSO", 105, y, { align: "center" })
-      y += 10
-      
-      // Sottotitolo con revisione
-      doc.setFontSize(10)
-      doc.setFont("helvetica", "normal")
-      doc.setTextColor(100)
-      doc.text("Rev. 0", 190, y, { align: "right" })
-      y += 12
-      
-      // Linea separatrice
-      doc.setDrawColor(200)
-      doc.line(15, y, 195, y)
-      y += 8
+    } else {
+      doc.text("REGISTRO VERIFICA SISTEMA SICUREZZA ANTINCENDIO", 105, y, { align: "center" })
     }
-
-    // 2. HEADER: TITOLO E DATI OPERATORI
-    doc.setFontSize(18)
-    doc.setTextColor(colorePrimario[0], colorePrimario[1], colorePrimario[2])
-    doc.text(titoloReport, 105, y, { align: "center" })
-    y += 15
+    y += 10
+    
+    // Sottotitolo con revisione
+    doc.setFontSize(10)
+    doc.setFont("helvetica", "normal")
+    doc.setTextColor(100)
+    doc.text("Rev. 0", 190, y, { align: "right" })
+    y += 12
+    
+    // Linea separatrice
+    doc.setDrawColor(200)
+    doc.line(15, y, 195, y)
+    y += 8
 
     doc.setFontSize(10)
     doc.setTextColor(0)
@@ -115,7 +111,7 @@ serve(async (req) => {
     }
     y += 5
 
-    // 3. CICLO SULLE RISPOSTE (Checklist, Note e Foto)
+    // 2. CICLO SULLE RISPOSTE (Checklist, Note e Foto)
     if (record.risposte && typeof record.risposte === 'object') {
       for (const [sez, domande] of Object.entries(record.risposte)) {
         
