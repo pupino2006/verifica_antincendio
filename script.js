@@ -315,7 +315,7 @@ window.inviaVerifica = async function() {
             operatore_1: op1,
             operatore_2: op2,
             data_ispezione: new Date(dataV).toISOString(),
-            tipo_modulo: tipoModulo,
+            tipo_modulo: tipoModulo.toLowerCase(),
             risposte: risposteJSON,
             foto: fotoChecklist,
             firma_base64: sigPad1.toDataURL(),

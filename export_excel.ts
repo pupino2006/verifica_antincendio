@@ -95,7 +95,7 @@ serve(async (req) => {
     )
 
     const body = await req.json()
-    const { tipo_tabella } = body
+    const tipo_tabella = String(body.tipo_tabella || '').toLowerCase();
 
     let tabella = 'verifiche_antincendio';
     let nomeFile = 'verifiche_antincendio';

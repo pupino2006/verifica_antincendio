@@ -31,16 +31,21 @@ serve(async (req) => {
 
     // Determina il tipo di verifica dalla struttura delle risposte
     const risposte = record.risposte || {};
-    const tipoModulo = record.tipo_modulo || '';
+    const tipoModuloRaw = String(record.tipo_modulo || '').toLowerCase();
     const hasContenutoCassetta = risposte.contenuto_cassetta || risposte.strumenti;
     const hasScaffalatura = risposte.struttura_scaffali || risposte.carichi_e_stato || risposte.cantilever || risposte.sicurezza_ordine;
     const isPrimoSoccorso = !!hasContenutoCassetta;
-    const isScaffalatura = tipoModulo === 'scaffalatura' || !!hasScaffalatura;
+    const isScaffalatura = tipoModuloRaw === 'scaffalatura' || tipoModuloRaw === 'scaffalatura e cantilever' || !!hasScaffalatura;
+    const isAntincendio = !isPrimoSoccorso && !isScaffalatura;
+
+    console.log("tipo_modulo ricevuto:", tipoModuloRaw);
+    console.log("isPrimoSoccorso:", isPrimoSoccorso, "isScaffalatura:", isScaffalatura, "isAntincendio:", isAntincendio);
 
     // Determina la tabella corretta per l'update
     const tabellaUpdate = isPrimoSoccorso ? 'verifiche_primo_soccorso' : isScaffalatura ? 'verifiche_scaffalatura' : 'verifiche_antincendio';
     const nomeVerbale = isPrimoSoccorso ? 'verbale_primo_soccorso_' : isScaffalatura ? 'verbale_scaffalatura_' : 'verbale_';
-    const colorePrimario = isPrimoSoccorso ? [40, 167, 69] : isScaffalatura ? [255, 193, 7] : [0, 74, 153]; // Verde, Giallo o Blu
+    const colorePrimario = isPrimoSoccorso ? [40, 167, 69] : isScaffalatura ? [255, 193, 7] : [0, 74, 153];
+    const nomeTipoVerifica = isPrimoSoccorso ? 'Primo Soccorso' : isScaffalatura ? 'Scaffalatura e Cantilever' : 'Antincendio';
 
     // Inizia la creazione del PDF
     const doc = new jsPDF()
@@ -217,6 +222,16 @@ serve(async (req) => {
 
     const { data: { publicUrl } } = supabase.storage.from("ai_verifiche").getPublicUrl(fileName)
 
+    // Aggiorna il record con il link PDF
+    const { error: updateErr } = await supabase
+      .from(tabellaUpdate)
+      .update({ pdf_url: publicUrl, processato: true })
+      .eq('id', record.id)
+
+    if (updateErr) {
+      console.error("Errore aggiornamento record PDF URL:", updateErr.message)
+    }
+
     // 6. INVIO EMAIL TRAMITE RESEND
     const resendApiKey = "re_9vyoQUPF_AGCtEg6ALeFDzcyavtiKz4iq"
     
@@ -228,7 +243,6 @@ serve(async (req) => {
     // Dati operatore
     const operatore1 = record.operatore_1 || 'N.D.';
     const operatore2 = record.operatore_2 ? `<p style="margin: 5px 0;"><strong>👤 Operatore 2:</strong> ${record.operatore_2}</p>` : '';
-    const nomeTipoVerifica = isPrimoSoccorso ? 'Primo Soccorso' : isScaffalatura ? 'Scaffalatura e Cantilever' : 'Antincendio';
     
     // Costruisci il riepilogo risposte
     let riepilogoHtml = '';
