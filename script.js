@@ -297,7 +297,7 @@ window.inviaVerifica = async function() {
         const sezioni = (tipoModulo === 'primo_soccorso') ? sezioniPrimoSoccorso : (tipoModulo === 'scaffalatura') ? sezioniScaffalatura : sezioniAntincendio;
         const tabellaDB = (tipoModulo === 'primo_soccorso') ? 'verifiche_primo_soccorso' : (tipoModulo === 'scaffalatura') ? 'verifiche_scaffalatura' : 'verifiche_antincendio';
         // Usa sempre hyper-function che gestisce tutti i tipi
-        const nomeEdgeFunction = 'hyper-function';
+        const nomeEdgeFunction = tipoModulo === 'scaffalatura' ? 'scaffalatura-pdf' : 'hyper-function';
 
         // 1. Raccogliamo tutte le risposte nell'oggetto JSON 'risposte'
         const risposteJSON = {};
