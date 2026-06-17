@@ -435,7 +435,7 @@ window.esportaTabella = async function(tipo) {
     try {
         alert('⏳ Esportazione in corso. Riceverai una email con il file CSV.');
 
-        const { data, error } = await supabaseClient.functions.invoke('export-excel', {
+        const { data, error } = await supabaseClient.functions.invoke('export-excel-v2', {
             body: { tipo_tabella: tipoInvio }
         });
 
