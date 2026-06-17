@@ -10,29 +10,79 @@ const corsHeaders = {
 // Funzione per convertire array di oggetti in CSV
 function arrayToCSV(data: any[]): string {
   if (data.length === 0) return '';
-  
+
   const headers = Object.keys(data[0]);
   const csvRows = [];
-  
-  // Header row
-  csvRows.push(headers.join(','));
-  
-  // Data rows
+
+  const delimiter = ';';
+  csvRows.push(headers.join(delimiter));
+
   for (const row of data) {
     const values = headers.map(header => {
       const value = row[header];
       if (value === null || value === undefined) return '';
       if (typeof value === 'object') return JSON.stringify(value);
       const stringValue = String(value);
-      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+      if (stringValue.includes(';') || stringValue.includes('"') || stringValue.includes('\n')) {
         return `"${stringValue.replace(/"/g, '""')}"`;
       }
       return stringValue;
     });
-    csvRows.push(values.join(','));
+    csvRows.push(values.join(delimiter));
   }
-  
+
   return csvRows.join('\n');
+}
+
+function flattenVerificheRecords(records: any[]): any[] {
+  const rows: any[] = [];
+
+  for (const record of records) {
+    const base = {
+      id: record.id ?? '',
+      tipo_modulo: record.tipo_modulo ?? '',
+      operatore_1: record.operatore_1 ?? '',
+      operatore_2: record.operatore_2 ?? '',
+      data_ispezione: record.data_ispezione ?? '',
+      created_at: record.created_at ?? '',
+      pdf_url: record.pdf_url ?? '',
+      processato: record.processato ?? false,
+      foto_presenti: record.foto ? Object.keys(record.foto).length : 0,
+      firma_operatore_1: record.firma_base64 ? 'SI' : 'NO',
+      firma_operatore_2: record.firma_2_base64 ? 'SI' : 'NO'
+    };
+
+    const risposte = record.risposte || {};
+    let addedRow = false;
+
+    for (const [sezione, items] of Object.entries(risposte)) {
+      if (!Array.isArray(items)) continue;
+      items.forEach((item: any, index: number) => {
+        rows.push({
+          ...base,
+          sezione: sezione,
+          domanda_indice: index + 1,
+          domanda: item?.domanda ?? '',
+          risposta: item?.risposta ?? '',
+          nota: item?.nota ?? ''
+        });
+        addedRow = true;
+      });
+    }
+
+    if (!addedRow) {
+      rows.push({
+        ...base,
+        sezione: '',
+        domanda_indice: '',
+        domanda: '',
+        risposta: '',
+        nota: ''
+      });
+    }
+  }
+
+  return rows;
 }
 
 serve(async (req) => {
@@ -71,9 +121,9 @@ serve(async (req) => {
         .select('*')
         .order('created_at', { ascending: false });
 
-      csvAntincendio = arrayToCSV(antincendio || []);
-      csvPrimoSoccorso = arrayToCSV(primoSoccorso || []);
-      csvScaffalatura = arrayToCSV(scaffalatura || []);
+      csvAntincendio = arrayToCSV(flattenVerificheRecords(antincendio || []));
+      csvPrimoSoccorso = arrayToCSV(flattenVerificheRecords(primoSoccorso || []));
+      csvScaffalatura = arrayToCSV(flattenVerificheRecords(scaffalatura || []));
       
       // Salva su Storage
       const dataOdierna = new Date().toISOString().split('T')[0];
@@ -158,7 +208,7 @@ serve(async (req) => {
 
     if (error) throw error;
 
-    csv = arrayToCSV(data || []);
+    csv = arrayToCSV(flattenVerificheRecords(data || []));
     const dataOdierna = new Date().toISOString().split('T')[0];
 
     // Salva CSV su Storage

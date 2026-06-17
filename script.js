@@ -73,21 +73,24 @@ const sezioniPrimoSoccorso = {
 
 const sezioniScaffalatura = {
     "struttura_scaffali": [
-        "Gli scaffali presentano montanti e traversi strutturalmente integri senza deformazioni?",
-        "Le saldature e i collegamenti sono privi di crepe o rotture visibili?",
-        "I ripiani sono fissati correttamente e non presentano cedimenti apparenti?"
+        "I montanti e i traversi sono integri, privi di piegature o deformazioni visibili?",
+        "Bulloneria, saldature e giunzioni sono presenti e correttamente serrate?",
+        "I ripiani e le mensole sono in posizione, senza cedimenti o inclinazioni anomale?"
     ],
     "carichi_e_stato": [
-        "Il carico è distribuito correttamente e non sono presenti sovraccarichi?",
-        "I carichi appoggiati sono stabili e non sporgono oltre i limiti consentiti?"
+        "Il carico è all'interno della portata massima indicata dal produttore?",
+        "La merce è posizionata in modo stabile e non sporge fuori dai profili della scaffalatura?",
+        "Non sono presenti ammassi irregolari o accumuli non omogenei sui piani?"
     ],
     "cantilever": [
-        "I cantilever sono stabili, senza oscillazioni o parti allentate?",
-        "I bracci a sbalzo non mostrano deformazioni, piegature o usura eccessiva?"
+        "I bracci cantilever sono allineati correttamente e non mostrano piegature?",
+        "I carichi sui cantilever sono ben bilanciati e fissati per evitare uno spostamento improvviso?",
+        "I supporti di ancoraggio del cantilever sono solidi e privi di deformazioni?"
     ],
     "sicurezza_ordine": [
-        "L'area intorno agli scaffali è libera da ostacoli e materiali di scarto?",
-        "Sono presenti adeguate protezioni, segnaletica e dispositivi antiurto?"
+        "I corridoi di accesso sono liberi da ostacoli e rispettano le distanze minime di sicurezza?",
+        "Sono presenti protezioni anticollisione o paraurti davanti ai montanti?",
+        "La segnaletica di portata, percorso e divieti è chiara e leggibile?"
     ]
 };
 
