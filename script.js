@@ -71,6 +71,26 @@ const sezioniPrimoSoccorso = {
     ]
 };
 
+const sezioniScaffalatura = {
+    "struttura_scaffali": [
+        "Gli scaffali presentano montanti e traversi strutturalmente integri senza deformazioni?",
+        "Le saldature e i collegamenti sono privi di crepe o rotture visibili?",
+        "I ripiani sono fissati correttamente e non presentano cedimenti apparenti?"
+    ],
+    "carichi_e_stato": [
+        "Il carico è distribuito correttamente e non sono presenti sovraccarichi?",
+        "I carichi appoggiati sono stabili e non sporgono oltre i limiti consentiti?"
+    ],
+    "cantilever": [
+        "I cantilever sono stabili, senza oscillazioni o parti allentate?",
+        "I bracci a sbalzo non mostrano deformazioni, piegature o usura eccessiva?"
+    ],
+    "sicurezza_ordine": [
+        "L'area intorno agli scaffali è libera da ostacoli e materiali di scarto?",
+        "Sono presenti adeguate protezioni, segnaletica e dispositivi antiurto?"
+    ]
+};
+
 // --- FUNZIONI NAVIGAZIONE ---
 
 window.mostraApp = function(tipo) {
@@ -87,6 +107,10 @@ window.mostraApp = function(tipo) {
             badge.textContent = '🏥 MODULO: VERIFICA CASSETTE PRIMO SOCCORSO';
             badge.style.background = '#d4edda';
             badge.style.color = '#155724';
+        } else if (tipoModulo === 'scaffalatura') {
+            badge.textContent = '🔧 MODULO: VERIFICA SCAFFALATURA E CANTILEVER';
+            badge.style.background = '#fff3cd';
+            badge.style.color = '#856404';
         } else {
             badge.textContent = '🔥 MODULO: VERIFICA ANTINCENDIO';
             badge.style.background = '#f8d7da';
@@ -141,7 +165,7 @@ window.renderChecklist = function() {
     if (!container) return;
     
     // Seleziona le sezioni in base al tipo di modulo
-    const sezioni = (tipoModulo === 'primo_soccorso') ? sezioniPrimoSoccorso : sezioniAntincendio;
+    const sezioni = (tipoModulo === 'primo_soccorso') ? sezioniPrimoSoccorso : (tipoModulo === 'scaffalatura') ? sezioniScaffalatura : sezioniAntincendio;
     
     let html = '';
     for (const [key, domande] of Object.entries(sezioni)) {
@@ -267,9 +291,9 @@ window.inviaVerifica = async function() {
 
     try {
         // Seleziona le sezioni in base al tipo di modulo
-        const sezioni = (tipoModulo === 'primo_soccorso') ? sezioniPrimoSoccorso : sezioniAntincendio;
-        const tabellaDB = (tipoModulo === 'primo_soccorso') ? 'verifiche_primo_soccorso' : 'verifiche_antincendio';
-        // Usa sempre hyper-function che gestisce entrambi i tipi
+        const sezioni = (tipoModulo === 'primo_soccorso') ? sezioniPrimoSoccorso : (tipoModulo === 'scaffalatura') ? sezioniScaffalatura : sezioniAntincendio;
+        const tabellaDB = (tipoModulo === 'primo_soccorso') ? 'verifiche_primo_soccorso' : (tipoModulo === 'scaffalatura') ? 'verifiche_scaffalatura' : 'verifiche_antincendio';
+        // Usa sempre hyper-function che gestisce tutti i tipi
         const nomeEdgeFunction = 'hyper-function';
 
         // 1. Raccogliamo tutte le risposte nell'oggetto JSON 'risposte'
@@ -288,6 +312,7 @@ window.inviaVerifica = async function() {
             operatore_1: op1,
             operatore_2: op2,
             data_ispezione: new Date(dataV).toISOString(),
+            tipo_modulo: tipoModulo,
             risposte: risposteJSON,
             foto: fotoChecklist,
             firma_base64: sigPad1.toDataURL(),
@@ -315,7 +340,7 @@ window.inviaVerifica = async function() {
             console.log("Edge function non disponibile, PDF verrà generato offline");
         }
 
-        const nomeModulo = (tipoModulo === 'primo_soccorso') ? 'Primo Soccorso' : 'Antincendio';
+        const nomeModulo = tipoModulo === 'primo_soccorso' ? 'Primo Soccorso' : tipoModulo === 'scaffalatura' ? 'Scaffalatura e Cantilever' : 'Antincendio';
         alert("✅ Verifica " + nomeModulo + " inviata con successo!");
         window.tornaAllaHome();
         setTimeout(() => { location.reload(); }, 500);
@@ -341,8 +366,8 @@ window.caricaStorico = async function(tipo) {
     const container = document.getElementById('lista-verifiche');
     container.innerHTML = "<p style='text-align:center;'>Caricamento in corso...</p>";
     
-    const tabellaDB = (tipoModulo === 'primo_soccorso') ? 'verifiche_primo_soccorso' : 'verifiche_antincendio';
-    const nomeModulo = (tipoModulo === 'primo_soccorso') ? 'Primo Soccorso' : 'Antincendio';
+    const tabellaDB = tipoModulo === 'primo_soccorso' ? 'verifiche_primo_soccorso' : tipoModulo === 'scaffalatura' ? 'verifiche_scaffalatura' : 'verifiche_antincendio';
+    const nomeModulo = tipoModulo === 'primo_soccorso' ? 'Primo Soccorso' : tipoModulo === 'scaffalatura' ? 'Scaffalatura' : 'Antincendio';
     
     try {
         const { data, error } = await supabaseClient
@@ -353,9 +378,11 @@ window.caricaStorico = async function(tipo) {
         if (error) throw error;
         
         // Aggiungi titolo per il tipo di storico
-        const titoloStorico = (tipoModulo === 'primo_soccorso') 
-            ? '<h3 style="color: #28a745; text-align: center;">📂 ARCHIVIO VERIFICHE PRIMO SOCCORSO</h3>' 
-            : '<h3 style="color: #dc3545; text-align: center;">📂 ARCHIVIO VERIFICHE ANTINCENDIO</h3>';
+        const titoloStorico = (tipoModulo === 'primo_soccorso')
+            ? '<h3 style="color: #28a745; text-align: center;">📂 ARCHIVIO VERIFICHE PRIMO SOCCORSO</h3>'
+            : (tipoModulo === 'scaffalatura')
+                ? '<h3 style="color: #856404; text-align: center;">📂 ARCHIVIO VERIFICHE SCAFFALATURA</h3>'
+                : '<h3 style="color: #dc3545; text-align: center;">📂 ARCHIVIO VERIFICHE ANTINCENDIO</h3>';
         
         if (data.length === 0) {
             container.innerHTML = titoloStorico + "<p style='text-align:center;'>Nessuna verifica trovata.</p>";
@@ -394,24 +421,23 @@ window.esportaTabella = async function(tipo) {
     const nomi = {
         'antincendio': 'Antincendio',
         'primo_soccorso': 'Primo Soccorso',
-        'entrambe': 'Entrambe le tabelle'
+        'scaffalatura': 'Scaffalatura e Cantilever',
+        'entrambe': 'Tutte le tabelle'
     };
-    
+
+    const tipoInvio = tipo === 'entrambe' ? 'tutte' : tipo;
     const conferma = confirm(`Vuoi esportare la tabella ${nomi[tipo]} e inviarla per email a geom.rip@gmail.com?`);
     if (!conferma) return;
-    
+
     try {
-        btn = document.createElement('button');
-        btn.innerText = '⏳ Esportazione in corso...';
-        btn.disabled = true;
-        alert('⏳ Esportazione in corso. Riceverai una email con il file Excel.');
-        
+        alert('⏳ Esportazione in corso. Riceverai una email con il file CSV.');
+
         const { data, error } = await supabaseClient.functions.invoke('export-excel', {
-            body: { tipo_tabella: tipo }
+            body: { tipo_tabella: tipoInvio }
         });
-        
+
         if (error) throw error;
-        
+
         alert('✅ Esportazione completata! Controlla la tua email.');
     } catch (err) {
         console.error(err);

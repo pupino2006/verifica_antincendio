@@ -52,9 +52,10 @@ serve(async (req) => {
     let csv = '';
     let csvAntincendio = '';
     let csvPrimoSoccorso = '';
+    let csvScaffalatura = '';
     
-    if (tipo_tabella === 'entrambe') {
-      // Esporta entrambe
+    if (tipo_tabella === 'tutte' || tipo_tabella === 'entrambe') {
+      // Esporta tutte e tre le tabelle
       const { data: antincendio } = await supabase
         .from('verifiche_antincendio')
         .select('*')
@@ -65,8 +66,14 @@ serve(async (req) => {
         .select('*')
         .order('created_at', { ascending: false });
 
+      const { data: scaffalatura } = await supabase
+        .from('verifiche_scaffalatura')
+        .select('*')
+        .order('created_at', { ascending: false });
+
       csvAntincendio = arrayToCSV(antincendio || []);
       csvPrimoSoccorso = arrayToCSV(primoSoccorso || []);
+      csvScaffalatura = arrayToCSV(scaffalatura || []);
       
       // Salva su Storage
       const dataOdierna = new Date().toISOString().split('T')[0];
@@ -74,13 +81,16 @@ serve(async (req) => {
       await supabase.storage
         .from("ai_verifiche")
         .upload(`esportazione_antincendio_${dataOdierna}.csv`, csvAntincendio, { contentType: 'text/csv', upsert: true });
-        
       await supabase.storage
         .from("ai_verifiche")
         .upload(`esportazione_primo_soccorso_${dataOdierna}.csv`, csvPrimoSoccorso, { contentType: 'text/csv', upsert: true });
+      await supabase.storage
+        .from("ai_verifiche")
+        .upload(`esportazione_scaffalatura_${dataOdierna}.csv`, csvScaffalatura, { contentType: 'text/csv', upsert: true });
       
       const { data: urlAnt } = supabase.storage.from("ai_verifiche").getPublicUrl(`esportazione_antincendio_${dataOdierna}.csv`);
       const { data: urlPri } = supabase.storage.from("ai_verifiche").getPublicUrl(`esportazione_primo_soccorso_${dataOdierna}.csv`);
+      const { data: urlSca } = supabase.storage.from("ai_verifiche").getPublicUrl(`esportazione_scaffalatura_${dataOdierna}.csv`);
 
       // Invia email con link ai file
       const resendApiKey = "re_9vyoQUPF_AGCtEg6ALeFDzcyavtiKz4iq";
@@ -99,9 +109,14 @@ serve(async (req) => {
       <a href="${urlAnt.publicUrl}" style="color: #004a99;">⬇️ Scarica CSV</a>
     </div>
     
-    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
       <strong>🏥 Verifiche Primo Soccorso</strong> (${(primoSoccorso || []).length} record)<br>
       <a href="${urlPri.publicUrl}" style="color: #28a745;">⬇️ Scarica CSV</a>
+    </div>
+    
+    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+      <strong>🔧 Verifiche Scaffalatura</strong> (${(scaffalatura || []).length} record)<br>
+      <a href="${urlSca.publicUrl}" style="color: #856404;">⬇️ Scarica CSV</a>
     </div>
   </div>
 </div>`;
@@ -120,7 +135,8 @@ serve(async (req) => {
       return new Response(JSON.stringify({ 
         success: true, 
         url_antincendio: urlAnt.publicUrl,
-        url_primo_soccorso: urlPri.publicUrl
+        url_primo_soccorso: urlPri.publicUrl,
+        url_scaffalatura: urlSca.publicUrl
       }), { 
         headers: { ...corsHeaders, "Content-Type": "application/json" } 
       });
@@ -130,6 +146,9 @@ serve(async (req) => {
     if (tipo_tabella === 'primo_soccorso') {
       tabella = 'verifiche_primo_soccorso';
       nomeFile = 'verifiche_primo_soccorso';
+    } else if (tipo_tabella === 'scaffalatura') {
+      tabella = 'verifiche_scaffalatura';
+      nomeFile = 'verifiche_scaffalatura';
     }
 
     const { data, error } = await supabase
@@ -151,11 +170,12 @@ serve(async (req) => {
 
     // Invia email con link
     const resendApiKey = "re_9vyoQUPF_AGCtEg6ALeFDzcyavtiKz4iq";
-    const nomeTabella = tipo_tabella === 'primo_soccorso' ? 'Primo Soccorso' : 'Antincendio';
+    const nomeTabella = tipo_tabella === 'primo_soccorso' ? 'Primo Soccorso' : tipo_tabella === 'scaffalatura' ? 'Scaffalatura e Cantilever' : 'Antincendio';
+    const coloreTestata = tipo_tabella === 'primo_soccorso' ? '#28a745' : tipo_tabella === 'scaffalatura' ? '#ffc107' : '#dc3545';
     
     const emailHtml = `
 <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 12px; overflow: hidden;">
-  <div style="background-color: ${tipo_tabella === 'primo_soccorso' ? '#28a745' : '#dc3545'}; padding: 25px; text-align: center;">
+  <div style="background-color: ${coloreTestata}; padding: 25px; text-align: center;">
     <h1 style="color: white; margin: 0;">📊 Esportazione ${nomeTabella}</h1>
     <p style="color: #e0e0e0; margin: 5px 0 0 0;">Pannelli Termici S.r.l.</p>
   </div>

@@ -30,15 +30,17 @@ serve(async (req) => {
     console.log("Elaborazione record ID:", record.id)
 
     // Determina il tipo di verifica dalla struttura delle risposte
-    // Se contiene 'contenuto_cassetta' o 'strumenti' è Primo Soccorso
     const risposte = record.risposte || {};
+    const tipoModulo = record.tipo_modulo || '';
     const hasContenutoCassetta = risposte.contenuto_cassetta || risposte.strumenti;
+    const hasScaffalatura = risposte.struttura_scaffali || risposte.carichi_e_stato || risposte.cantilever || risposte.sicurezza_ordine;
     const isPrimoSoccorso = !!hasContenutoCassetta;
-    
+    const isScaffalatura = tipoModulo === 'scaffalatura' || !!hasScaffalatura;
+
     // Determina la tabella corretta per l'update
-    const tabellaUpdate = isPrimoSoccorso ? 'verifiche_primo_soccorso' : 'verifiche_antincendio';
-    const nomeVerbale = isPrimoSoccorso ? 'verbale_primo_soccorso_' : 'verbale_';
-    const colorePrimario = isPrimoSoccorso ? [40, 167, 69] : [0, 74, 153]; // Verde o Blu
+    const tabellaUpdate = isPrimoSoccorso ? 'verifiche_primo_soccorso' : isScaffalatura ? 'verifiche_scaffalatura' : 'verifiche_antincendio';
+    const nomeVerbale = isPrimoSoccorso ? 'verbale_primo_soccorso_' : isScaffalatura ? 'verbale_scaffalatura_' : 'verbale_';
+    const colorePrimario = isPrimoSoccorso ? [40, 167, 69] : isScaffalatura ? [255, 193, 7] : [0, 74, 153]; // Verde, Giallo o Blu
 
     // Inizia la creazione del PDF
     const doc = new jsPDF()
@@ -74,10 +76,14 @@ serve(async (req) => {
     // Titolo principale (differente per tipo)
     doc.setFontSize(16)
     doc.setFont("helvetica", "bold")
-    doc.setTextColor(0, 74, 153)
     if (isPrimoSoccorso) {
+      doc.setTextColor(40, 167, 69)
       doc.text("REGISTRO CASSETTE DI PRIMO SOCCORSO", 105, y, { align: "center" })
+    } else if (isScaffalatura) {
+      doc.setTextColor(255, 193, 7)
+      doc.text("REGISTRO VERIFICA SCAFFALATURA E CANTILEVER", 105, y, { align: "center" })
     } else {
+      doc.setTextColor(0, 74, 153)
       doc.text("REGISTRO VERIFICA SISTEMA SICUREZZA ANTINCENDIO", 105, y, { align: "center" })
     }
     y += 10
@@ -222,7 +228,7 @@ serve(async (req) => {
     // Dati operatore
     const operatore1 = record.operatore_1 || 'N.D.';
     const operatore2 = record.operatore_2 ? `<p style="margin: 5px 0;"><strong>👤 Operatore 2:</strong> ${record.operatore_2}</p>` : '';
-    const nomeTipoVerifica = isPrimoSoccorso ? 'Primo Soccorso' : 'Antincendio';
+    const nomeTipoVerifica = isPrimoSoccorso ? 'Primo Soccorso' : isScaffalatura ? 'Scaffalatura e Cantilever' : 'Antincendio';
     
     // Costruisci il riepilogo risposte
     let riepilogoHtml = '';
