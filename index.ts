@@ -31,11 +31,11 @@ serve(async (req) => {
 
     // Determina il tipo di verifica dalla struttura delle risposte
     const risposte = record.risposte || {};
-    const tipoModuloRaw = String(record.tipo_modulo || '').toLowerCase();
+    const tipoModuloRaw = String(record.tipo_modulo || '').trim().toLowerCase();
     const hasContenutoCassetta = risposte.contenuto_cassetta || risposte.strumenti;
     const hasScaffalatura = risposte.struttura_scaffali || risposte.carichi_e_stato || risposte.cantilever || risposte.sicurezza_ordine;
-    const isPrimoSoccorso = !!hasContenutoCassetta;
-    const isScaffalatura = tipoModuloRaw === 'scaffalatura' || tipoModuloRaw === 'scaffalatura e cantilever' || !!hasScaffalatura;
+    const isPrimoSoccorso = tipoModuloRaw.includes('primo') || tipoModuloRaw.includes('soccorso') || !!hasContenutoCassetta;
+    const isScaffalatura = tipoModuloRaw.includes('scaffal') || tipoModuloRaw.includes('cantilever') || !!hasScaffalatura;
     const isAntincendio = !isPrimoSoccorso && !isScaffalatura;
 
     console.log("tipo_modulo ricevuto:", tipoModuloRaw);
