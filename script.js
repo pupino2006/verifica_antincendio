@@ -94,6 +94,53 @@ const sezioniScaffalatura = {
     ]
 };
 
+// Configurazione centralizzata per i tre moduli di verifica
+const CONFIG_MODULI = {
+    antincendio: {
+        sezioni: sezioniAntincendio,
+        tabella: 'verifiche_antincendio',
+        edgeFunction: 'hyper-function',
+        nome: 'Antincendio',
+        badge: {
+            testo: '🔥 MODULO: VERIFICA ANTINCENDIO',
+            bg: '#f8d7da',
+            color: '#721c24'
+        },
+        coloreStorico: '#dc3545',
+        colorePdf: '#004a99'
+    },
+    primo_soccorso: {
+        sezioni: sezioniPrimoSoccorso,
+        tabella: 'verifiche_primo_soccorso',
+        edgeFunction: 'primo-soccorso-pdf',
+        nome: 'Primo Soccorso',
+        badge: {
+            testo: '🏥 MODULO: VERIFICA CASSETTE PRIMO SOCCORSO',
+            bg: '#d4edda',
+            color: '#155724'
+        },
+        coloreStorico: '#28a745',
+        colorePdf: '#28a745'
+    },
+    scaffalatura: {
+        sezioni: sezioniScaffalatura,
+        tabella: 'verifiche_scaffalatura',
+        edgeFunction: 'scaffalatura-pdf',
+        nome: 'Scaffalatura e Cantilever',
+        badge: {
+            testo: '🔧 MODULO: VERIFICA SCAFFALATURA E CANTILEVER',
+            bg: '#fff3cd',
+            color: '#856404'
+        },
+        coloreStorico: '#ffc107',
+        colorePdf: '#856404'
+    }
+};
+
+function getConfigModulo(tipo) {
+    return CONFIG_MODULI[tipo] || CONFIG_MODULI.antincendio;
+}
+
 // --- FUNZIONI NAVIGAZIONE ---
 
 window.mostraApp = function(tipo) {
@@ -103,22 +150,12 @@ window.mostraApp = function(tipo) {
     document.getElementById('tab-storico').style.display = 'none';
     document.getElementById('btnHomeFisso').style.display = 'block';
     
-    // Imposta il badge del tipo di modulo
+    const config = getConfigModulo(tipoModulo);
     const badge = document.getElementById('tipo-modulo-badge');
     if (badge) {
-        if (tipoModulo === 'primo_soccorso') {
-            badge.textContent = '🏥 MODULO: VERIFICA CASSETTE PRIMO SOCCORSO';
-            badge.style.background = '#d4edda';
-            badge.style.color = '#155724';
-        } else if (tipoModulo === 'scaffalatura') {
-            badge.textContent = '🔧 MODULO: VERIFICA SCAFFALATURA E CANTILEVER';
-            badge.style.background = '#fff3cd';
-            badge.style.color = '#856404';
-        } else {
-            badge.textContent = '🔥 MODULO: VERIFICA ANTINCENDIO';
-            badge.style.background = '#f8d7da';
-            badge.style.color = '#721c24';
-        }
+        badge.textContent = config.badge.testo;
+        badge.style.background = config.badge.bg;
+        badge.style.color = config.badge.color;
     }
     
     fotoChecklist = {}; // Reset foto
@@ -167,8 +204,7 @@ window.renderChecklist = function() {
     const container = document.getElementById('checklist-container');
     if (!container) return;
     
-    // Seleziona le sezioni in base al tipo di modulo
-    const sezioni = (tipoModulo === 'primo_soccorso') ? sezioniPrimoSoccorso : (tipoModulo === 'scaffalatura') ? sezioniScaffalatura : sezioniAntincendio;
+    const sezioni = getConfigModulo(tipoModulo).sezioni;
     
     let html = '';
     for (const [key, domande] of Object.entries(sezioni)) {
@@ -293,11 +329,10 @@ window.inviaVerifica = async function() {
     btn.innerText = "🚀 INVIO IN CORSO...";
 
     try {
-        // Seleziona le sezioni in base al tipo di modulo
-        const sezioni = (tipoModulo === 'primo_soccorso') ? sezioniPrimoSoccorso : (tipoModulo === 'scaffalatura') ? sezioniScaffalatura : sezioniAntincendio;
-        const tabellaDB = (tipoModulo === 'primo_soccorso') ? 'verifiche_primo_soccorso' : (tipoModulo === 'scaffalatura') ? 'verifiche_scaffalatura' : 'verifiche_antincendio';
-        // Usa sempre hyper-function che gestisce tutti i tipi
-        const nomeEdgeFunction = tipoModulo === 'scaffalatura' ? 'scaffalatura-pdf' : 'hyper-function';
+        const config = getConfigModulo(tipoModulo);
+        const sezioni = config.sezioni;
+        const tabellaDB = config.tabella;
+        const nomeEdgeFunction = config.edgeFunction;
 
         // 1. Raccogliamo tutte le risposte nell'oggetto JSON 'risposte'
         const risposteJSON = {};
@@ -334,17 +369,17 @@ window.inviaVerifica = async function() {
         
         const nuovoRecord = dbData[0];
 
-        // 4. Chiamata alla Edge Function
-        try {
-            await supabaseClient.functions.invoke(nomeEdgeFunction, {
-                body: { record: nuovoRecord }
-            });
-        } catch (funcErr) {
-            console.log("Edge function non disponibile, PDF verrà generato offline");
+        // 4. Chiamata alla Edge Function dedicata al modulo
+        const { error: funcErr } = await supabaseClient.functions.invoke(nomeEdgeFunction, {
+            body: { record: nuovoRecord }
+        });
+
+        if (funcErr) {
+            console.error("Errore Edge Function:", funcErr);
+            throw new Error("Verifica salvata ma errore generazione PDF (" + nomeEdgeFunction + "): " + funcErr.message);
         }
 
-        const nomeModulo = tipoModulo === 'primo_soccorso' ? 'Primo Soccorso' : tipoModulo === 'scaffalatura' ? 'Scaffalatura e Cantilever' : 'Antincendio';
-        alert("✅ Verifica " + nomeModulo + " inviata con successo!");
+        alert("✅ Verifica " + config.nome + " inviata con successo!");
         window.tornaAllaHome();
         setTimeout(() => { location.reload(); }, 500);
 
@@ -369,8 +404,8 @@ window.caricaStorico = async function(tipo) {
     const container = document.getElementById('lista-verifiche');
     container.innerHTML = "<p style='text-align:center;'>Caricamento in corso...</p>";
     
-    const tabellaDB = tipoModulo === 'primo_soccorso' ? 'verifiche_primo_soccorso' : tipoModulo === 'scaffalatura' ? 'verifiche_scaffalatura' : 'verifiche_antincendio';
-    const nomeModulo = tipoModulo === 'primo_soccorso' ? 'Primo Soccorso' : tipoModulo === 'scaffalatura' ? 'Scaffalatura' : 'Antincendio';
+    const config = getConfigModulo(tipoModulo);
+    const tabellaDB = config.tabella;
     
     try {
         const { data, error } = await supabaseClient
@@ -380,12 +415,7 @@ window.caricaStorico = async function(tipo) {
             
         if (error) throw error;
         
-        // Aggiungi titolo per il tipo di storico
-        const titoloStorico = (tipoModulo === 'primo_soccorso')
-            ? '<h3 style="color: #28a745; text-align: center;">📂 ARCHIVIO VERIFICHE PRIMO SOCCORSO</h3>'
-            : (tipoModulo === 'scaffalatura')
-                ? '<h3 style="color: #856404; text-align: center;">📂 ARCHIVIO VERIFICHE SCAFFALATURA</h3>'
-                : '<h3 style="color: #dc3545; text-align: center;">📂 ARCHIVIO VERIFICHE ANTINCENDIO</h3>';
+        const titoloStorico = `<h3 style="color: ${config.coloreStorico}; text-align: center;">📂 ARCHIVIO VERIFICHE ${config.nome.toUpperCase()}</h3>`;
         
         if (data.length === 0) {
             container.innerHTML = titoloStorico + "<p style='text-align:center;'>Nessuna verifica trovata.</p>";
@@ -396,14 +426,14 @@ window.caricaStorico = async function(tipo) {
             const op2Text = v.operatore_2 ? ` (+ ${v.operatore_2})` : "";
             
             return `
-            <div class="card-verifica" style="border-left: 5px solid ${tipoModulo === 'primo_soccorso' ? '#28a745' : '#dc3545'}; margin-bottom:10px;">
+            <div class="card-verifica" style="border-left: 5px solid ${config.coloreStorico}; margin-bottom:10px;">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <strong>${v.operatore_1}${op2Text}</strong>
                     <span style="font-size:0.8rem; color:#666;">${new Date(v.data_ispezione).toLocaleDateString()}</span>
                 </div>
                 <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
                     <span style="font-size:0.7rem; color:#999;">ID: ${v.id}</span>
-                    ${v.pdf_url ? `<a href="${v.pdf_url}" target="_blank" style="background:${tipoModulo === 'primo_soccorso' ? '#28a745' : '#004a99'}; color:white; padding:5px 10px; border-radius:5px; text-decoration:none; font-size:0.8rem;">VEDI PDF 📄</a>` : `<span style="font-size:0.8rem; color:orange;">In elaborazione...</span>`}
+                    ${v.pdf_url ? `<a href="${v.pdf_url}" target="_blank" style="background:${config.colorePdf}; color:white; padding:5px 10px; border-radius:5px; text-decoration:none; font-size:0.8rem;">VEDI PDF 📄</a>` : `<span style="font-size:0.8rem; color:orange;">In elaborazione...</span>`}
                 </div>
             </div>
         `}).join('');
